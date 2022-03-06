@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="vr_planning" name="client_node" type="client_node" output="screen" />
+</launch>
