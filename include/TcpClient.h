@@ -1,22 +1,27 @@
-#ifndef _TCP_CLIENT_H_
-#define _TCP_CLIENT_H_
+#pragma once
+// #ifndef _TCP_CLIENT_H_
+// #define _TCP_CLIENT_H_
 
-#ifdef _WIN32
-#else
-#define SD_BOTH 0
-#endif
+// #ifdef _WIN32
+// #else
+// #define SD_BOTH 0
+// #endif
 
+#include <iostream>
 #include <string>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <geometry_msgs/Transform.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 
 class TcpClient {
 public:
-    TcpClient(const PCSTR address, const PCSTR port);
+    TcpClient(const PCSTR address, const PCSTR port):
+    port_(port),
+    address_(address) {};
 
-    ~TcpClient();
+    TcpClient::~TcpClient() {};
     
     // init WSA
     bool init();
@@ -32,7 +37,10 @@ public:
 
     int recvBuffer();
 
-    std::string recvLine();
+    int recvCommand();
+
+    geometry_msgs::Vector3 getVector3();
+    geometry_msgs::Quaternion getQuaternion();
 
     struct addrinfo* getAddrInfo() const;
 private:
@@ -44,18 +52,11 @@ private:
     const static int recvbuflen = 512;
     char recvbuf[recvbuflen];
 
+    int startId = 0;
     bool sendBuffer(char *buff, int len);
+    int getRecvMsgStart();
+    float getFloat();
 };
-
-TcpClient::TcpClient(const PCSTR address, const PCSTR port):
-    port_(port),
-    address_(address) {
-
-}
-
-TcpClient::~TcpClient()
-{
-}
 
 bool TcpClient::init(){
     if (WSAStartup(MAKEWORD(2,2), &wsaData) != 0) {
@@ -130,20 +131,73 @@ int TcpClient::recvBuffer(){
     if ( SOCKET_ERROR == (len=recv(socket_, (char *)&recvbuf, recvbuflen, 0) )){
         return WSAGetLastError();
     }
-
-    std::cout << "received: " << len << " bytes." << std::endl;
+    std::cout << "reveived " << len << " bytes" << std::endl;
     return 0;
 }
 
-std::string TcpClient::recvLine(){
+int TcpClient::recvCommand(){
     if (recvBuffer()){
-        return "ERR";
+        std::cout << "error" << std::endl;
+        return -1;
     }
-    std::string res = "";
-    for (int i = 0; (i < recvbuflen) && (recvbuf[i] != '\n'); ++i){
-        res += recvbuf[i];
+    startId = getRecvMsgStart();
+    int msgLength = recvbuf[startId];
+    startId += 2;
+
+    if (startId + msgLength >= recvbuflen){
+        return 0;
     }
+    int msgCmdCode = recvbuf[startId];
+    startId += 2;
+
+    // std::cout << "Received Len: " << msgLength << " cmd: "  << msgCmdCode << std::endl;
+    return msgCmdCode;
+}
+
+int TcpClient::getRecvMsgStart(){
+    for (int i = 0; i < recvbuflen - 2; ++i){
+        if ( ((uint8_t)recvbuf[i] == 255) && ((uint8_t)recvbuf[i + 1] == 255) ){
+            return i + 2;
+        }
+    }
+    return -1;
+}
+
+geometry_msgs::Vector3 TcpClient::getVector3(){
+    geometry_msgs::Vector3 res;
+    res.x = getFloat();
+    res.y = getFloat();
+    res.z = getFloat();
     return res;
 }
 
-#endif // _TCP_CLIENT_H_
+geometry_msgs::Quaternion TcpClient::getQuaternion(){
+    geometry_msgs::Quaternion res;
+    float yaw = getFloat();
+    float pitch = getFloat();
+    float roll = getFloat();
+    
+    double cy = cos(yaw * 0.5);
+    double sy = sin(yaw * 0.5);
+    double cp = cos(pitch * 0.5);
+    double sp = sin(pitch * 0.5);
+    double cr = cos(roll * 0.5);
+    double sr = sin(roll * 0.5);
+
+    res.w = cr * cp * cy + sr * sp * sy;
+    res.x = sr * cp * cy - cr * sp * sy;
+    res.y = cr * sp * cy + sr * cp * sy;
+    res.z = cr * cp * sy - sr * sp * cy;
+
+    return res;
+}
+
+float TcpClient::getFloat(){
+    float res;
+    *((uint8_t*)(&res) + 0) = recvbuf[startId];
+    *((uint8_t*)(&res) + 1) = recvbuf[startId + 1];
+    *((uint8_t*)(&res) + 2) = recvbuf[startId + 2];
+    *((uint8_t*)(&res) + 3) = recvbuf[startId + 3];
+    startId += 4;
+    return res;
+}
