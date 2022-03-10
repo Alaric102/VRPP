@@ -28,4 +28,9 @@ add_executable(client_node
     src/client_node.cpp
 )
 
-target_link_libraries(client_node ${catkin_LIBRARIES} ${BOOST_LIBRARIES})
+# add_executable(path_planning_node
+#     src/path_planning_node.py
+# )
+
+target_link_libraries(client_node ${catkin_LIBRARIES})
+# target_link_libraries(path_planning_node ${catkin_LIBRARIES})
