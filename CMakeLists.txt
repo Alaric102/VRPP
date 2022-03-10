@@ -3,6 +3,7 @@ project(vr_planning)
 
 find_package(catkin REQUIRED COMPONENTS 
     roscpp
+    rospy
     std_msgs
     sensor_msgs
     geometry_msgs
