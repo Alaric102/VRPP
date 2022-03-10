@@ -11,8 +11,6 @@ private:
     size_t begin_;
     size_t end_;
 
-    void AddItem(uint8_t data);
-    uint8_t GetItem();
 public:
     CircleBuffer(const size_t size);
     ~CircleBuffer();
@@ -20,8 +18,17 @@ public:
     bool IsEmpty() const;
     size_t GetCapacity() const;
     size_t GetSize() const;
-    void InsertData(uint8_t* pSrc, unsigned long len);
-    uint8_t GetData(uint8_t* pDst, unsigned long len);
+    void PrintBuffer() const;
+
+    void AddItem(uint8_t data);
+    void AddData(uint8_t* pSrc, unsigned long len);
+
+    uint8_t GetItem();
+    void GetData(uint8_t* pDst, unsigned long len);
+
+    uint8_t PredictNext() const{
+        return buffer_[end_];
+    }
 
     bool isFull;
 };
@@ -71,7 +78,7 @@ void CircleBuffer::AddItem(uint8_t data){
     isFull = begin_ == end_;
 }
 
-void CircleBuffer::InsertData(uint8_t* pData, unsigned long len){
+void CircleBuffer::AddData(uint8_t* pData, unsigned long len){
     for (unsigned long i = 0; i < len; ++i){
         AddItem(pData[i]);
     }
@@ -84,8 +91,17 @@ uint8_t CircleBuffer::GetItem(){
     return res;
 }
 
-uint8_t CircleBuffer::GetData(uint8_t* pDst, unsigned long len){
+void CircleBuffer::GetData(uint8_t* pDst, unsigned long len){
     for (unsigned long i = 0; i < len; ++i){
         pDst[i] = GetItem();
     }
+}
+
+void CircleBuffer::PrintBuffer() const{
+    std::cout << "Print: ";
+    for (unsigned long i = 0; i < GetSize(); ++i){
+        unsigned long id = (end_ + i) % size_;
+        std::cout << +buffer_[id] << " ";
+    }
+    std::cout << std::endl;
 }

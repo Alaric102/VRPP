@@ -15,15 +15,21 @@
 
 #include <geometry_msgs/Transform.h>
 
+#include "CircleBuffer.h"
+
 #pragma comment(lib, "Ws2_32.lib")
 
 class TcpClient {
 public:
     TcpClient(const PCSTR address, const PCSTR port):
     port_(port),
-    address_(address) {};
+    address_(address) {
+        circleBuf = new CircleBuffer(512);
+    };
 
-    TcpClient::~TcpClient() {};
+    TcpClient::~TcpClient() {
+        delete circleBuf;
+    };
     
     // init WSA
     bool init();
@@ -53,6 +59,7 @@ private:
 
     const static int recvbuflen = 512;
     char recvbuf[recvbuflen];
+    CircleBuffer *circleBuf;
 
     int startId = 0;
     bool sendBuffer(char *buff, int len);
@@ -124,45 +131,54 @@ bool TcpClient::sendBuffer(char *buff, int len){
     return true;
 }
 
+//Return len of received data
 int TcpClient::recvBuffer(){
     bool l = true;
     if (SOCKET_ERROR == ioctlsocket (socket_, FIONBIO, (unsigned long*) &l) ) {
-        return WSAGetLastError();
+        std::cout << "recvBuffer() error: " << WSAGetLastError() << std::endl;
+        return -1;
     }
-    int len;
+    int len = 0;
     if ( SOCKET_ERROR == (len=recv(socket_, (char *)&recvbuf, recvbuflen, 0) )){
-        return WSAGetLastError();
+        if (WSAGetLastError() != 10035)
+            std::cout << "recvBuffer() error: " << WSAGetLastError() << std::endl;
+        return -1;
     }
-    std::cout << "reveived " << len << " bytes" << std::endl;
-    return 0;
+    // std::cout << "Received " << len << " bytes" << std::endl;
+    return len;
 }
 
 int TcpClient::recvCommand(){
-    if (recvBuffer()){
-        std::cout << "error" << std::endl;
-        return -1;
-    }
-    startId = getRecvMsgStart();
-    int msgLength = recvbuf[startId];
-    startId += 2;
-
-    if (startId + msgLength >= recvbuflen){
-        return 0;
-    }
-    int msgCmdCode = recvbuf[startId];
-    startId += 2;
-
-    // std::cout << "Received Len: " << msgLength << " cmd: "  << msgCmdCode << std::endl;
-    return msgCmdCode;
-}
-
-int TcpClient::getRecvMsgStart(){
-    for (int i = 0; i < recvbuflen - 2; ++i){
-        if ( ((uint8_t)recvbuf[i] == 255) && ((uint8_t)recvbuf[i + 1] == 255) ){
-            return i + 2;
+    if (circleBuf->IsEmpty()){
+        // std::cout << "Empty circle buffer." << std::endl;
+        int recvLen = 0;
+        if ((recvLen = recvBuffer()) > 0){
+            circleBuf->AddData((uint8_t*)recvbuf, recvLen);
+            // std::cout << "Added ";
+            // circleBuf->PrintBuffer();
+        } else {
+            // std::cout << "Nothing to Add" << std::endl;
+            return 0;
         }
     }
-    return -1;
+    
+    // Get first head byte
+    uint8_t fhead = circleBuf->GetItem();
+    uint8_t shead = circleBuf->PredictNext();
+    if ((fhead == 255) && (shead == 255)){
+        // std::cout << "Message head found" << std::endl;
+        circleBuf->GetItem();
+    } else {
+        return 0;
+    }
+    // Get message length
+    uint16_t msgLen = 0;
+    circleBuf->GetData((uint8_t*)(&msgLen), 2);
+    // Get message command code
+    uint16_t cmdCode = 0;
+    circleBuf->GetData((uint8_t*)(&cmdCode), 2);
+
+    return cmdCode;
 }
 
 geometry_msgs::Vector3 TcpClient::getVector3(){
@@ -196,10 +212,6 @@ geometry_msgs::Quaternion TcpClient::getQuaternion(){
 
 float TcpClient::getFloat(){
     float res;
-    *((uint8_t*)(&res) + 0) = recvbuf[startId];
-    *((uint8_t*)(&res) + 1) = recvbuf[startId + 1];
-    *((uint8_t*)(&res) + 2) = recvbuf[startId + 2];
-    *((uint8_t*)(&res) + 3) = recvbuf[startId + 3];
-    startId += 4;
+    circleBuf->GetData((uint8_t*)(&res), 4);
     return res;
 }

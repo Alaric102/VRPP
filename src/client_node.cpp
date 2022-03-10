@@ -22,6 +22,10 @@ enum UnityCommands {
 // 4. Send and receive data.
 // 5. Disconnect.
 
+
+
+
+
 int main(int argc, char **argv){
     TcpClient tcpClient(DEFAULT_ADDR, DEFAULT_PORT);
 
@@ -56,6 +60,7 @@ int main(int argc, char **argv){
         }
         
         int cmd = tcpClient.recvCommand();
+
         switch (cmd) {
             case setStartPoint: {
                 stateMsg.translation = tcpClient.getVector3();
@@ -68,11 +73,11 @@ int main(int argc, char **argv){
                 goalStatePub.publish(stateMsg);
                 break;
             } case startPlanning: {
-
+                std::cout << "Start planning" << std::endl;
                 break;
             }       
             default:{
-                std::cout << "Unrecognized command: " << cmd << std::endl;
+                // std::cout << "Unrecognized command: " << cmd << std::endl;
                 break;
             }
         }
