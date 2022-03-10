@@ -3,19 +3,13 @@ project(vr_planning)
 
 find_package(catkin REQUIRED COMPONENTS 
     roscpp
-    rospy
     std_msgs
     sensor_msgs
     geometry_msgs
 )
 
-find_package(Boost REQUIRED)
-
-message(STATUS "BOOST_INCLUDE_DIR='${BOOST_INCLUDE_DIR}'")
-
 include_directories(
     include
-    ${BOOST_INCLUDE_DIR}
 )
 
 catkin_package(
