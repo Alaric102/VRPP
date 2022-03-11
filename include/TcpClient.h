@@ -19,6 +19,8 @@
 
 #pragma comment(lib, "Ws2_32.lib")
 
+# define PI_NUMBER           3.1415926f
+
 class TcpClient {
 public:
     TcpClient(const PCSTR address, const PCSTR port):
@@ -65,6 +67,7 @@ private:
     bool sendBuffer(char *buff, int len);
     int getRecvMsgStart();
     float getFloat();
+    void getFloat(float *fDst);
 };
 
 bool TcpClient::init(){
@@ -183,6 +186,7 @@ int TcpClient::recvCommand(){
 
 geometry_msgs::Vector3 TcpClient::getVector3(){
     geometry_msgs::Vector3 res;
+    std::cout << "getVector3: \n" << std::endl;
     res.x = getFloat();
     res.y = getFloat();
     res.z = getFloat();
@@ -191,16 +195,19 @@ geometry_msgs::Vector3 TcpClient::getVector3(){
 
 geometry_msgs::Quaternion TcpClient::getQuaternion(){
     geometry_msgs::Quaternion res;
-    float yaw = getFloat();
-    float pitch = getFloat();
-    float roll = getFloat();
+    float roll;
+    getFloat(&roll);
+    float pitch;
+    getFloat(&pitch);
+    float yaw;
+    getFloat(&yaw);
     
-    double cy = cos(yaw * 0.5);
-    double sy = sin(yaw * 0.5);
-    double cp = cos(pitch * 0.5);
-    double sp = sin(pitch * 0.5);
-    double cr = cos(roll * 0.5);
-    double sr = sin(roll * 0.5);
+    double cy = cos(yaw*PI_NUMBER/180.0f * 0.5);
+    double sy = sin(yaw*PI_NUMBER/180.0f * 0.5);
+    double cp = cos(pitch*PI_NUMBER/180.0f * 0.5);
+    double sp = sin(pitch*PI_NUMBER/180.0f * 0.5);
+    double cr = cos(roll*PI_NUMBER/180.0f * 0.5);
+    double sr = sin(roll*PI_NUMBER/180.0f * 0.5);
 
     res.w = cr * cp * cy + sr * sp * sy;
     res.x = sr * cp * cy - cr * sp * sy;
@@ -214,4 +221,8 @@ float TcpClient::getFloat(){
     float res;
     circleBuf->GetData((uint8_t*)(&res), 4);
     return res;
+}
+
+void TcpClient::getFloat(float *fDst){
+    circleBuf->GetData((uint8_t*)(fDst), 4);
 }

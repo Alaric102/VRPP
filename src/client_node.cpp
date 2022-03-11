@@ -9,6 +9,7 @@
 #define DEFAULT_PORT "12345"
 #define DEFAULT_ADDR "localhost"
 
+
 enum UnityCommands {
     setStartPoint = 1,
     setGoalPoint,
@@ -21,10 +22,6 @@ enum UnityCommands {
 // 3. Connect to the server.
 // 4. Send and receive data.
 // 5. Disconnect.
-
-
-
-
 
 int main(int argc, char **argv){
     TcpClient tcpClient(DEFAULT_ADDR, DEFAULT_PORT);
@@ -53,20 +50,19 @@ int main(int argc, char **argv){
 
     while(nh.ok()){
         if (tcpClient.isConnected()){
-            std::cout << ".";
+            
         } else {
             tcpClient.Reconnect();
             std::cout << "Reconnecting" << std::endl;
         }
         
         int cmd = tcpClient.recvCommand();
-
         switch (cmd) {
             case setStartPoint: {
                 stateMsg.translation = tcpClient.getVector3();
                 stateMsg.rotation = tcpClient.getQuaternion();
                 startStatePub.publish(stateMsg);
-                break;
+                break;                
             } case setGoalPoint: {
                 stateMsg.translation = tcpClient.getVector3();
                 stateMsg.rotation = tcpClient.getQuaternion();
