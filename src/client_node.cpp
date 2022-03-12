@@ -3,12 +3,12 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/Transform.h>
+#include <std_msgs/Bool.h>
 
 #include "TcpClient.h"
 
 #define DEFAULT_PORT "12345"
 #define DEFAULT_ADDR "localhost"
-
 
 enum UnityCommands {
     setStartPoint = 1,
@@ -44,9 +44,13 @@ int main(int argc, char **argv){
     ros::NodeHandle nh;
     ros::Rate loopRate(10);
 
-    ros::Publisher startStatePub = nh.advertise<geometry_msgs::Transform>("startState", 10);
-    ros::Publisher goalStatePub = nh.advertise<geometry_msgs::Transform>("goalState", 10);
+    ros::Publisher startStatePub = nh.advertise<geometry_msgs::Transform>("startState", 1);
+    ros::Publisher goalStatePub = nh.advertise<geometry_msgs::Transform>("goalState", 1);
     static geometry_msgs::Transform stateMsg;
+
+    ros::Publisher startPlanPub = nh.advertise<std_msgs::Bool>("startPlan", 1);
+    static std_msgs::Bool startPlanMsg;
+    startPlanMsg.data = false;
 
     while(nh.ok()){
         if (tcpClient.isConnected()){
@@ -69,7 +73,8 @@ int main(int argc, char **argv){
                 goalStatePub.publish(stateMsg);
                 break;
             } case startPlanning: {
-                std::cout << "Start planning" << std::endl;
+                startPlanMsg.data = true;
+                startPlanPub.publish(startPlanMsg);
                 break;
             }       
             default:{
@@ -77,6 +82,7 @@ int main(int argc, char **argv){
                 break;
             }
         }
+
         loopRate.sleep();
     }
     return 0;

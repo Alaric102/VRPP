@@ -1,5 +1,5 @@
 <launch>
     <node pkg="vr_planning" name="client_node" type="client_node" output="screen" />
 
-    <node pkg="vr_planning" name="path_planning_node" type="path_planning_node.py" output="screen" />
+    <node pkg="vr_planning" name="globalPP_node" type="globalPP_node.py" output="screen" />
 </launch>

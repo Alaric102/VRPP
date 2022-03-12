@@ -186,7 +186,6 @@ int TcpClient::recvCommand(){
 
 geometry_msgs::Vector3 TcpClient::getVector3(){
     geometry_msgs::Vector3 res;
-    std::cout << "getVector3: \n" << std::endl;
     res.x = getFloat();
     res.y = getFloat();
     res.z = getFloat();

@@ -1,26 +1,26 @@
 from asyncio.windows_events import NULL
+from xmlrpc.client import Boolean
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from PIL import Image, ImageOps
 import time
+
+# import matplotlib.pyplot as plt
+# from mpl_toolkits.mplot3d import Axes3D
 
 class Algorithm:
     # def __init__(self, env_map, conf_space, start_point, goal_point):
     def __init__(self):
-        # self.mapArray = self.Load2DMap()
-        self.voxelMapSize = np.zeros((3,), dtype=int)
+        self.voxelMapSize = np.zeros((3,), dtype=np.uint)
         self.voxelMapGridSize = np.zeros((3,), dtype=float)
+        self.voxelMapMinCorner = np.zeros((3,), dtype=float)
         self.voxelMap = np.empty((0), dtype=bool)               # Obstacles = True, free = False
 
-        self.startState = np.array([6, 2, 4])
-        self.goalState = np.array([27, 2, 27])
+        self.startState = np.ndarray((3,), dtype=float)         # Store float [x, y, z]
+        self.goalState = np.ndarray((3,), dtype=float)          # Store float [x, y, z]
+        self.dStartState = np.ndarray((3,), dtype=np.uint)      # Store uint [x, y, z]
+        self.dGoalState = np.ndarray((3,), dtype=np.uint)       # Store uint [x, y, z]
 
-        # self.env_map = env_map
         self.confSpace = np.empty((0), dtype=bool)
-        # self.start_point = start_point
-        # self.goal_point = goal_point
-        # self.path = []
+        self.path = []
 
         # map which hold visit status {0, 1} and cost of visiting
         self.visit_map = np.zeros_like(self.confSpace, dtype=tuple)
@@ -28,18 +28,36 @@ class Algorithm:
         self.visited_num = 0
 
         self.queue = []
-        # self.parent_table = []
-        
-        if self.LoadVoxelMap():
-            self.GetConfSpace()
-            # self.PlotVoxelMap()
+        self.parent_table = []
+        self.isActive = False
+    
+    def setStartState(self, state :np.ndarray):
+        assert self.startState.shape == state.shape, \
+            "setStartState(): " + str(self.startState.shape) + " != " + str(state.shape)
+        self.startState = state
+        print("New start state: ", self.startState)
 
-    def GetConfSpace(self):
+    def setGoalState(self, state: np.ndarray):
+        assert self.goalState.shape == state.shape, "setGoalState(): Wrong shape!"
+        self.goalState = state
+        print("New goal state: ", self.startState)
+
+    def InitVoxelMap(self) -> Boolean:
+        if self.__LoadVoxelMap():
+            self.__GetConfSpace()
+            self.dStartState = self.__GetDescreteState(self.startState)
+            self.dGoalState = self.__GetDescreteState(self.goalState)
+            print("dStartState: ", self.dStartState)
+            print("dGoalState: ", self.dGoalState)
+            return True
+        return False
+
+    def __GetConfSpace(self):
         self.confSpace = self.voxelMap
         self.visit_map = np.zeros_like(self.confSpace, dtype=tuple)
         self.visit_map.fill((False,0))
         
-    def LoadVoxelMap(self, full_path = "D:/catkin_ws/src/VRPP_ROS/launch/map.txt"):
+    def __LoadVoxelMap(self, full_path = "D:/catkin_ws/src/VRPP_ROS/launch/map.txt"):
         with open(full_path) as f:
             # Get voxelMap size
             line = f.readline()
@@ -65,9 +83,17 @@ class Algorithm:
                 #     print("Unexpected word: " + word)
                 #     return False
                 counter += 1
-            # self.voxelMap = np.zeros(self.voxelMapSize, dtype=bool)
             print("VoxelMap grid size: \n", self.voxelMapGridSize)
             
+            # Get voxelMap min corner
+            line = f.readline()
+            counter = 0
+            for word in line.split(maxsplit=3):
+                word = word.replace(",", ".", 1)
+                self.voxelMapMinCorner[counter] = float(word)
+                counter += 1
+            print("VoxelMap min corner: \n", self.voxelMapMinCorner)
+
             # Get voxelMap data
             line = f.readline()
             while line:
@@ -85,34 +111,32 @@ class Algorithm:
             f.close()
             return True
 
-    def PlotVoxelMap(self, duration = 0.5):
-        x, y, z = self.voxelMap.nonzero()
-        fig = plt.figure(figsize=(10, 10))
-        ax = fig.add_subplot(111, projection='3d')
-        ax.azim = 90
-        ax.elev = 0
-        ax.scatter(x, y, z, marker='x', c="red")
+    def __GetDescreteState(self, state: np.ndarray):
+        assert self.voxelMapGridSize.shape == state.shape, "__GetDescreteState(): Wrong shape!"
+        state -= self.voxelMapMinCorner
+        return np.array(state/self.voxelMapGridSize , dtype=np.uint)
 
-        x, y, z = self.startState
-        ax.scatter(x, y, z, c="green")
+    # def PlotVoxelMap(self, duration = 0.5):
+    #     x, y, z = self.voxelMap.nonzero()
+    #     fig = plt.figure(figsize=(10, 10))
+    #     ax = fig.add_subplot(111, projection='3d')
+    #     ax.azim = 90
+    #     ax.elev = 0
+    #     ax.scatter(x, y, z, marker='x', c="red")
 
-        x, y, z = self.goalState
-        ax.scatter(x, y, z, c="blue")
-        if (duration > 0):
-            plt.pause(duration)
-        return fig, ax
+    #     x, y, z = self.startState
+    #     ax.scatter(x, y, z, c="green")
 
-    def CombinePlot(self, axes, point, color="blue"):
-        x, y, z = point
-        axes.scatter(x, y, z, c=color)
-        return axes
+    #     x, y, z = self.goalState
+    #     ax.scatter(x, y, z, c="blue")
+    #     if (duration > 0):
+    #         plt.pause(duration)
+    #     return fig, ax
 
-    # def wrap_angle(self, angle):
-    #     while angle > 3:
-    #         angle -= 3
-    #     while angle < 0:
-    #         angle += 3
-    #     return angle
+    # def CombinePlot(self, axes, point, color="blue"):
+    #     x, y, z = point
+    #     axes.scatter(x, y, z, c=color)
+    #     return axes
 
     def isEqual(self, lft, rht): 
         return (lft == rht).all()
@@ -165,44 +189,43 @@ class Algorithm:
         delta = self.goalState - point
         return np.linalg.norm(delta[:-1], ord=2)
 
-    # def getParentPoint(self, point):
-    #     for i in self.parent_table:
-    #         if (i[1] == point).all():
-    #             return i[0]
-    #     return np.empty
+    def getParentPoint(self, point):
+        for i in self.parent_table:
+            if (i[1] == point).all():
+                return i[0]
+        return np.empty
 
-    # def getBranch(self):
-    #     child_point = self.goal_point
-    #     path = [child_point]
-    #     while  not (child_point == self.start_point).all():
-    #         parent_point = self.getParentPoint(child_point)
-    #         if (parent_point == np.empty).all():
-    #             return path
-    #         path.append(parent_point)
-    #         child_point = parent_point
-    #     return path
+    def getBranch(self):
+        child_point = self.dGoalState
+        path = [child_point]
+        while  not (child_point == self.dStartState).all():
+            parent_point = self.getParentPoint(child_point)
+            if (parent_point == np.empty).all():
+                return path
+            path.append(parent_point)
+            child_point = parent_point
+        return path
 
-    # def getPath(self):
-    #     path = self.getBranch()
-    #     path.reverse()
-    #     return path
+    def getPath(self):
+        path = self.getBranch()
+        path.reverse()
+        return path
     
 class Dijkstra(Algorithm):
     def Run(self):
-        self.queueInsert(self.startState, 0)
-        self.setVisited(self.startState, 0)
+        self.path = []
+        self.queueInsert(self.dStartState, 0)
+        self.setVisited(self.dStartState, 0)
 
-        counter = 5
-        fig, axes = self.PlotVoxelMap(0)
-        # while (counter > 0):
+        start = time.time()
         while self.queue != np.empty:
             currentState, cost = self.GetNextFromQueue()
-            print(currentState)
-            if self.isEqual(currentState, self.goalState):
-                # self.path = self.getPath()
-                # return fig, axes
-                print("Finished")
-                break
+
+            if self.isEqual(currentState, self.dGoalState):
+                self.path = self.getPath()
+                end = time.time()
+                print("Finished in", end-start, "sec.")
+                return True
             
             actionSpace = self.getActionSpace()
             for action in actionSpace:
@@ -210,12 +233,8 @@ class Dijkstra(Algorithm):
                 if (nextState[0] >= self.voxelMapSize[0]) or (nextState[1] >= self.voxelMapSize[1]):
                     continue
 
-                # next_point[2] = self.wrap_angle(next_point[2])        #No wrap in our case
-
                 if self.isObstacle(nextState):
                     continue
-
-                self.CombinePlot(axes, currentState, color="black")
 
                 isVisited, currentCost = self.getVisited(nextState)
                 if not isVisited:
@@ -223,17 +242,14 @@ class Dijkstra(Algorithm):
                     self.setVisited(nextState, nextCost)
                     self.queueInsert(nextState, nextCost + self.getHeuristic(nextState))
                     
-                    self.CombinePlot(axes, nextState, color="gray")
-        #             self.parent_table.append( (current_point, nextState) )
+                    # self.CombinePlot(axes, nextState, color="gray")
+                    self.parent_table.append( (currentState, nextState) )
                 else:
                     nextCost = currentCost + 1
                     _ , preVcost = self.getVisited(nextState)
                     if nextCost < preVcost:
                         self.setVisited(nextState, nextCost)
-        #                 self.parent_table.append( (current_point, nextState) )
+                        self.parent_table.append( (currentState, nextState) )
                 
-            counter -= 1
-            plt.pause(0.001)
-        while(True):
-            pass
+        print("No path exists.")
         return False
