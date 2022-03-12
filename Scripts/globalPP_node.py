@@ -20,7 +20,7 @@ def startState_cb(msg):
     
     # startState = np.array([msg.translation.x, msg.translation.y, msg.translation.z], dtype=float)
     startState = np.array([msg.translation.x, 2, msg.translation.z], dtype=float)
-    ppAlgorithm.setStartState(startState)
+    ppAlgorithm.SetStartState(startState)
     
 def goalState_cb(msg):
     rospy.loginfo(rospy.get_caller_id() + ": Goal state: position x: %f, y: %f, z: %f", \
@@ -28,7 +28,7 @@ def goalState_cb(msg):
     
     # goalState = np.array([msg.translation.x, msg.translation.y, msg.translation.z], dtype=float)
     goalState = np.array([msg.translation.x, 2, msg.translation.z], dtype=float)
-    ppAlgorithm.setGoalState(goalState)
+    ppAlgorithm.SetGoalState(goalState)
 
 def startPlan_cb(msg):
     if msg.data:

@@ -31,13 +31,13 @@ class Algorithm:
         self.parent_table = []
         self.isActive = False
     
-    def setStartState(self, state :np.ndarray):
+    def SetStartState(self, state :np.ndarray):
         assert self.startState.shape == state.shape, \
             "setStartState(): " + str(self.startState.shape) + " != " + str(state.shape)
         self.startState = state
         print("New start state: ", self.startState)
 
-    def setGoalState(self, state: np.ndarray):
+    def SetGoalState(self, state: np.ndarray):
         assert self.goalState.shape == state.shape, "setGoalState(): Wrong shape!"
         self.goalState = state
         print("New goal state: ", self.startState)
@@ -242,7 +242,6 @@ class Dijkstra(Algorithm):
                     self.setVisited(nextState, nextCost)
                     self.queueInsert(nextState, nextCost + self.getHeuristic(nextState))
                     
-                    # self.CombinePlot(axes, nextState, color="gray")
                     self.parent_table.append( (currentState, nextState) )
                 else:
                     nextCost = currentCost + 1
