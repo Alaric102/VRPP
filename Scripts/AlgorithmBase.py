@@ -9,10 +9,6 @@ import time
 class Algorithm:
     # def __init__(self, env_map, conf_space, start_point, goal_point):
     def __init__(self):
-        self.voxelMapSize = np.zeros((3,), dtype=np.uint)
-        self.voxelMapGridSize = np.zeros((3,), dtype=float)
-        self.voxelMapMinCorner = np.zeros((3,), dtype=float)
-        self.voxelMap = np.empty((0), dtype=bool)               # Obstacles = True, free = False
 
         self.startState = np.ndarray((3,), dtype=float)         # Store float [x, y, z]
         self.goalState = np.ndarray((3,), dtype=float)          # Store float [x, y, z]
