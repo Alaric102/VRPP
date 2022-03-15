@@ -107,11 +107,14 @@ class AStar(AlgorithmBase):
         while len(self.__queue) > 0:
             _ , currentState = self.__queue.popleft()
 
-            if (currentState == self.goalStateDescrete).all() or self.__IsNearGoal(currentState):
-            # if self.__IsNearGoal(currentState):
-                # self.__graph.Append(self.goalStateDescrete, currentState)
-                print("Finished in", time.time() - start, "sec.")
-                return True
+            if self.__IsNearGoal(currentState):
+                if (currentState == self.goalStateDescrete).all():
+                    print("Finished in", time.time() - start, "sec.")
+                    return True
+                else:
+                    self.__graph.Append(self.goalStateDescrete, currentState)
+                    print("Finished in", time.time() - start, "sec.")
+                    return True
 
             actionSpace = self.__GetActionSpace()
             for action in actionSpace:
@@ -123,6 +126,8 @@ class AStar(AlgorithmBase):
                     liftingLevel = 1
                     while self.__voxelMap.IsObastacle(nextState + lifting*liftingLevel):
                         liftingLevel += 1
+                        if liftingLevel > 8:
+                            break
 
                     if liftingLevel > 8:
                         continue
