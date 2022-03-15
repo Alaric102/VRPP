@@ -13,6 +13,7 @@ class Graph:
             print("no parent exists")
             return
         self.__graph[tuple(node)] = tuple(parent)
+        return
 
     def GetBranch(self, endState):
         res = deque()

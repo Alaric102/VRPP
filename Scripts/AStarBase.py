@@ -16,7 +16,7 @@ class AStar(AlgorithmBase):
         self.__queue = deque()
 
     def LoadVoxelMap(self, full_path: str = "map.txt") -> bool:
-        self.__voxelMap.LoadVoxelMap(full_path = full_path)
+        return self.__voxelMap.LoadVoxelMap(full_path = full_path)
     
     def GetVoxelMap(self):
         return self.__voxelMap
@@ -107,9 +107,9 @@ class AStar(AlgorithmBase):
         while len(self.__queue) > 0:
             _ , currentState = self.__queue.popleft()
 
-            # if (currentState == self.goalStateDescrete).all():
-            if self.__IsNearGoal(currentState):
-                self.__graph.Append(self.goalStateDescrete, currentState)
+            if (currentState == self.goalStateDescrete).all() or self.__IsNearGoal(currentState):
+            # if self.__IsNearGoal(currentState):
+                # self.__graph.Append(self.goalStateDescrete, currentState)
                 print("Finished in", time.time() - start, "sec.")
                 return True
 
@@ -162,6 +162,8 @@ class AStar(AlgorithmBase):
         return False
 
     def GetPlan(self):
-        return self.__graph.GetBranch(self.goalStateDescrete)
+        res = self.__graph.GetBranch(self.goalStateDescrete)
+        print("Path length: ", len(res))
+        return res
 
 # ppAlg = Descrete()

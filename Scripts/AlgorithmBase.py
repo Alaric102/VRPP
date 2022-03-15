@@ -15,9 +15,9 @@ class AlgorithmBase:
         
     def SetGoalState(self, state :np.ndarray):
         assert self.__goalState.shape == state.shape, \
-            "setStartState(): " + str(self.__goalState.shape) + " != " + str(state.shape)
+            "SetGoalState(): " + str(self.__goalState.shape) + " != " + str(state.shape)
         self.__goalState = state
-        print("New start state: ", self.__goalState)
+        print("New Goal state: ", self.__goalState)
 
     def GetStartState(self) -> np.ndarray:
         return self.__startState

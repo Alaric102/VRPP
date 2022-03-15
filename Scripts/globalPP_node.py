@@ -1,5 +1,6 @@
 import rospy
 from geometry_msgs.msg import Transform, PoseStamped, Pose
+from collections import deque
 from nav_msgs.msg import Path
 from std_msgs.msg import Bool
 
@@ -7,11 +8,6 @@ from AStarBase import AStar
 import numpy as np
 
 globalPlanner = AStar()
-# if ppAlgorithm.Run():
-#     fig, axes = ppAlgorithm.PlotVoxelMap()
-#     for point in ppAlgorithm.path:
-#         ppAlgorithm.CombinePlot(axes, point, "black")
-#     plt.show()
 
 def startState_cb(msg):
     rospy.loginfo(rospy.get_caller_id() + ": Start state: position x: %f, y: %f, z: %f", \
@@ -34,11 +30,10 @@ def startPlan_cb(msg):
         rospy.loginfo(rospy.get_caller_id() + " : Start plan: " + str(msg.data) )
         if globalPlanner.LoadVoxelMap(full_path = "D:/catkin_ws/src/VRPP_ROS/launch/map.txt"):
             globalPlanner.isActive = True
-        
 
 def main():
     rospy.init_node('globalPP_node', anonymous=True)
-    rate = rospy.Rate(10) # 10hz
+    rate = rospy.Rate(1) # 10hz
 
     rospy.Subscriber("startState", Transform, startState_cb)
     rospy.Subscriber("goalState", Transform, goalState_cb)
@@ -65,6 +60,7 @@ def main():
                 globalPathPub.publish(globalPathMsg)
 
         rate.sleep()
+        # rospy.
 
 if __name__ == '__main__':
     main()
