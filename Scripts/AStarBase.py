@@ -24,10 +24,14 @@ class AStar(AlgorithmBase):
     def GetGraph(self):
         return self.__graph
         
-    def __getDescreteState(self, state: np.ndarray) -> np.ndarray:
-        assert self.__voxelMap.GetGridSize().shape == state.shape, "__GetDescreteState(): Wrong shape!"
+    def GetDescreteState(self, state: np.ndarray) -> np.ndarray:
+        assert self.__voxelMap.GetGridSize().shape == state.shape, "GetDescreteState(): Wrong shape!"
         state -= self.__voxelMap.GetMinCorner()
         return np.array(state/self.__voxelMap.GetGridSize() , dtype=np.uint)
+    
+    def GetContinuousState(self, state: np.ndarray) -> np.ndarray:
+        assert self.__voxelMap.GetGridSize().shape == state.shape, "GetDescreteState(): Wrong shape!"
+        return np.array(state*self.__voxelMap.GetGridSize() + self.__voxelMap.GetMinCorner() , dtype=float)
 
     def __FindLowerBound(self, item, min, max):
         if (max - min == 1):
@@ -80,8 +84,8 @@ class AStar(AlgorithmBase):
 
     def GetGlobalPlan(self) -> bool:
         # Descretize start/goal states
-        self.startStateDescrete = self.__getDescreteState(self.GetStartState())
-        self.goalStateDescrete = self.__getDescreteState(self.GetGoalState())
+        self.startStateDescrete = self.GetDescreteState(self.GetStartState())
+        self.goalStateDescrete = self.GetDescreteState(self.GetGoalState())
         while (not self.__voxelMap.IsObastacle(self.startStateDescrete + np.array([0, -1, 0], dtype=np.uint))):
             self.startStateDescrete += np.array([0, -1, 0], dtype=np.uint)
         while (not self.__voxelMap.IsObastacle(self.goalStateDescrete + np.array([0, -1, 0], dtype=np.uint))):
