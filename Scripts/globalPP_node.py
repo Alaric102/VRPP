@@ -3,11 +3,10 @@ from geometry_msgs.msg import Transform, PoseStamped, Pose
 from nav_msgs.msg import Path
 from std_msgs.msg import Bool
 
+from AStarBase import AStar
 import numpy as np
 
-from AlgorithmBase import Dijkstra
-
-ppAlgorithm = Dijkstra()
+globalPlanner = AStar()
 # if ppAlgorithm.Run():
 #     fig, axes = ppAlgorithm.PlotVoxelMap()
 #     for point in ppAlgorithm.path:
@@ -20,7 +19,7 @@ def startState_cb(msg):
     
     # startState = np.array([msg.translation.x, msg.translation.y, msg.translation.z], dtype=float)
     startState = np.array([msg.translation.x, 2, msg.translation.z], dtype=float)
-    ppAlgorithm.SetStartState(startState)
+    globalPlanner.SetStartState(startState)
     
 def goalState_cb(msg):
     rospy.loginfo(rospy.get_caller_id() + ": Goal state: position x: %f, y: %f, z: %f", \
@@ -28,13 +27,13 @@ def goalState_cb(msg):
     
     # goalState = np.array([msg.translation.x, msg.translation.y, msg.translation.z], dtype=float)
     goalState = np.array([msg.translation.x, 2, msg.translation.z], dtype=float)
-    ppAlgorithm.SetGoalState(goalState)
+    globalPlanner.SetGoalState(goalState)
 
 def startPlan_cb(msg):
     if msg.data:
         rospy.loginfo(rospy.get_caller_id() + " : Start plan: " + str(msg.data) )
-        if ppAlgorithm.InitVoxelMap():
-            ppAlgorithm.isActive = True
+        if globalPlanner.LoadVoxelMap(full_path = "D:/catkin_ws/src/VRPP_ROS/launch/map.txt"):
+            globalPlanner.isActive = True
         
 
 def main():
@@ -48,14 +47,14 @@ def main():
     globalPathPub = rospy.Publisher('globalPath', Path, queue_size=10)
 
     while not rospy.is_shutdown():
-        if ppAlgorithm.isActive:
-            ppAlgorithm.isActive = False
-            if ppAlgorithm.Run():
+        if globalPlanner.isActive:
+            globalPlanner.isActive = False
+            if globalPlanner.GetGlobalPlan():
                 globalPathMsg = Path()
                 globalPathMsg.header.stamp = rospy.Time.now()
                 globalPathMsg.header.frame_id = "globalPath"
 
-                path = ppAlgorithm.path
+                path = globalPlanner.GetPlan()
                 for pose in path:
                     poseMsg = PoseStamped()
                     poseMsg.pose.position.x = pose[0]
