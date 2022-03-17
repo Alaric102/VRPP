@@ -3,6 +3,8 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/Transform.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Path.h>
 #include <std_msgs/Bool.h>
 
 #include "TcpClient.h"
@@ -10,11 +12,14 @@
 #define DEFAULT_PORT "12345"
 #define DEFAULT_ADDR "localhost"
 
+TcpClient tcpClient(DEFAULT_ADDR, DEFAULT_PORT);
+
 enum UnityCommands {
     setStartPoint = 1,
     setGoalPoint,
     startPlanning
 };
+
 
 // Client
 // 1. Initialize Winsock.
@@ -23,8 +28,13 @@ enum UnityCommands {
 // 4. Send and receive data.
 // 5. Disconnect.
 
+void globalPath_cb(const nav_msgs::Path &msg){
+    std::cout << "received new PATH" << std::endl;
+    tcpClient.sendPath(1, msg.poses);
+}
+
+
 int main(int argc, char **argv){
-    TcpClient tcpClient(DEFAULT_ADDR, DEFAULT_PORT);
 
     if (!tcpClient.init()){
         std::cout << "Failed to init TCP Client." << std::endl;
@@ -51,6 +61,8 @@ int main(int argc, char **argv){
     ros::Publisher startPlanPub = nh.advertise<std_msgs::Bool>("startPlan", 1);
     static std_msgs::Bool startPlanMsg;
     startPlanMsg.data = false;
+
+    ros::Subscriber globalPathSub = nh.subscribe("globalPath", 10, globalPath_cb);
 
     while(nh.ok()){
         if (tcpClient.isConnected()){
@@ -83,6 +95,7 @@ int main(int argc, char **argv){
             }
         }
 
+        ros::spinOnce();
         loopRate.sleep();
     }
     return 0;

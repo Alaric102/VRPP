@@ -8,18 +8,25 @@
 // #endif
 
 #include <iostream>
+#include <vector>
 #include <string>
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
 #include <geometry_msgs/Transform.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Path.h>
 
 #include "CircleBuffer.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 
 # define PI_NUMBER           3.1415926f
+
+enum ROSCommands {
+    globalPath = 1
+};
 
 class TcpClient {
 public:
@@ -49,6 +56,8 @@ public:
 
     int recvCommand();
 
+    int sendPath(int cmd, const std::vector<geometry_msgs::PoseStamped> &poses);
+
     geometry_msgs::Vector3 getVector3();
     geometry_msgs::Quaternion getQuaternion();
 
@@ -68,6 +77,7 @@ private:
     int getRecvMsgStart();
     float getFloat();
     void getFloat(float *fDst);
+    void GetBytes(float v, uint8_t* dst, unsigned int offset = 0);
 };
 
 bool TcpClient::init(){
@@ -224,4 +234,51 @@ float TcpClient::getFloat(){
 
 void TcpClient::getFloat(float *fDst){
     circleBuf->GetData((uint8_t*)(fDst), 4);
+}
+
+void TcpClient::GetBytes(float v, uint8_t* dst, unsigned int offset){
+
+}
+
+int TcpClient::sendPath(int cmd, const std::vector<geometry_msgs::PoseStamped> &poses){
+    unsigned int buffSize = 2 + 1 + poses.size()*3*4;   // BeginBytes + cmdByte + posesSize*corrdinatesNumber*floatSize
+    uint8_t *buff = new uint8_t[buffSize];
+    buff[0] = 0xFF;
+    buff[1] = 0xFF;
+    buff[2] = (uint8_t)cmd;
+    unsigned int offset = 3;
+
+    for (int i = 0; i < poses.size(); ++i){
+        float f = (float)poses[i].pose.position.x;
+        uint8_t* bytes = reinterpret_cast<uint8_t*>(&f);
+        std::memcpy(buff + offset, bytes, 4);
+        offset += 4;
+
+        f = (float)poses[i].pose.position.y;
+        bytes = reinterpret_cast<uint8_t*>(&f);
+        std::memcpy(buff + offset, bytes, 4);
+        offset += 4;
+        
+        f = (float)poses[i].pose.position.z;
+        bytes = reinterpret_cast<uint8_t*>(&f);
+        std::memcpy(buff + offset, bytes, 4);
+        offset += 4;
+
+        std::cout << (float)poses[i].pose.position.x << ", " << 
+            (float)poses[i].pose.position.y << ", " << 
+            (float)poses[i].pose.position.z << std::endl;
+        // std::cout << "f: " << f << ", bytes: ";
+        // for (unsigned int j = 0; j < 4; ++j)
+        //     std::cout << +bytes[j] << " ";
+        // std::cout << std::endl;
+    }
+
+    std::cout << offset << ", " << buffSize << std::endl;
+    std::cout << "Buffer: ";
+    for (unsigned int j = 0; j < buffSize; ++j)
+        std::cout << +buff[j] << " ";
+    std::cout << std::endl;
+    
+
+    return (int)sendBuffer((char*) buff, buffSize);
 }

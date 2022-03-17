@@ -10,7 +10,7 @@ class Graph:
         try:
             self.__graph[tuple(parent)]
         except KeyError:
-            print("no parent exists")
+            print("no parent exists", parent, "for node", node)
             return
         self.__graph[tuple(node)] = tuple(parent)
         return

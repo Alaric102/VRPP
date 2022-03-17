@@ -14,7 +14,7 @@ def startState_cb(msg):
         msg.translation.x, msg.translation.y, msg.translation.z)
     
     # startState = np.array([msg.translation.x, msg.translation.y, msg.translation.z], dtype=float)
-    startState = np.array([msg.translation.x, 2, msg.translation.z], dtype=float)
+    startState = np.array([msg.translation.x, msg.translation.y, msg.translation.z], dtype=float)
     globalPlanner.SetStartState(startState)
     
 def goalState_cb(msg):
@@ -22,7 +22,7 @@ def goalState_cb(msg):
         msg.translation.x, msg.translation.y, msg.translation.z)
     
     # goalState = np.array([msg.translation.x, msg.translation.y, msg.translation.z], dtype=float)
-    goalState = np.array([msg.translation.x, 2, msg.translation.z], dtype=float)
+    goalState = np.array([msg.translation.x, msg.translation.y, msg.translation.z], dtype=float)
     globalPlanner.SetGoalState(goalState)
 
 def startPlan_cb(msg):
@@ -52,9 +52,10 @@ def main():
                 path = globalPlanner.GetPlan()
                 for pose in path:
                     poseMsg = PoseStamped()
-                    poseMsg.pose.position.x = pose[0]
-                    poseMsg.pose.position.y = pose[1]
-                    poseMsg.pose.position.z = pose[2]
+                    x, y, z = globalPlanner.GetContinuousState(pose)
+                    poseMsg.pose.position.x = x
+                    poseMsg.pose.position.y = y
+                    poseMsg.pose.position.z = z
 
                     globalPathMsg.poses.append(poseMsg)
                 globalPathPub.publish(globalPathMsg)
