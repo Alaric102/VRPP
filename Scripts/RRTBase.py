@@ -3,7 +3,7 @@ from collections import deque
 import time
 
 from AlgorithmBase import AlgorithmBase
-from PotentionalField import PotentionalMap
+from PotentialField import PotentialMap
 from Scripts.VoxelMapBase import VoxelMap
 import utils
 

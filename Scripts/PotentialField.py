@@ -1,9 +1,9 @@
 import numpy as np
 from VoxelMapBase import VoxelMap
 
-class PotentionalMap:
+class PotentialMap:
     def __init__(self) -> None:
-        self.__voxelMap = VoxelMap()
+        pass
 
     def MakePotentionalFromVoxel(self, voxelMap: VoxelMap):
-        self.__voxelMap = voxelMap
+        pass

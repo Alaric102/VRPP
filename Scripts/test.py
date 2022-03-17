@@ -4,6 +4,7 @@ from RRTBase import RRTBase
 import numpy as np
 import utils
 import matplotlib.pyplot as plt
+from PotentialField import PotentialMap
 
 globalPlanner = AStar()
 localPlanner = RRTBase()
@@ -19,21 +20,23 @@ localPlanner.SetStartState(startState)
 localPlanner.SetGoalState(goalState)
 
 voxelMap = globalPlanner.GetVoxelMap()
+potentialMap = PotentialMap()
+
 localPlanner.SetVoxelMap(voxelMap)
 
 fig, axes = utils.PlotVoxelProjection(voxelMap)
 
-if globalPlanner.GetGlobalPlan():
-    descretePlan = globalPlanner.GetPlan()
-    continuousPlan = []
+# if globalPlanner.GetGlobalPlan():
+#     descretePlan = globalPlanner.GetPlan()
+#     continuousPlan = []
 
-    for descreteState in descretePlan:
-        utils.PlotVoxelStateProjection(axes, descreteState, "yellow")
-        continuousPlan.append(globalPlanner.GetContinuousState(descreteState))
+#     for descreteState in descretePlan:
+#         utils.PlotVoxelStateProjection(axes, descreteState, "yellow")
+#         continuousPlan.append(globalPlanner.GetContinuousState(descreteState))
 
-    localPlanner.SetGlobalPlan(continuousPlan)
-    localPlanner.GetLocalPlan()
+#     localPlanner.SetGlobalPlan(continuousPlan)
+#     localPlanner.GetLocalPlan()
     
-utils.PlotVoxelStateProjection(axes, globalPlanner.startStateDescrete, "blue")
-utils.PlotVoxelStateProjection(axes, globalPlanner.goalStateDescrete, "green")
+# utils.PlotVoxelStateProjection(axes, globalPlanner.startStateDescrete, "blue")
+# utils.PlotVoxelStateProjection(axes, globalPlanner.goalStateDescrete, "green")
 plt.show()
