@@ -1,4 +1,5 @@
 from collections import deque
+from threading import local
 from AStarBase import AStar
 from RRTBase import RRTBase
 import numpy as np
@@ -20,23 +21,29 @@ localPlanner.SetStartState(startState)
 localPlanner.SetGoalState(goalState)
 
 voxelMap = globalPlanner.GetVoxelMap()
-potentialMap = PotentialMap()
+potentialMap = PotentialMap(voxelMap)
 
-localPlanner.SetVoxelMap(voxelMap)
+# localPlanner.SetVoxelMap(voxelMap)
 
 fig, axes = utils.PlotVoxelProjection(voxelMap)
 
-# if globalPlanner.GetGlobalPlan():
-#     descretePlan = globalPlanner.GetPlan()
-#     continuousPlan = []
+if globalPlanner.GetGlobalPlan():
+    descretePlan = globalPlanner.GetPlan()
+    continuousPlan = []
 
-#     for descreteState in descretePlan:
-#         utils.PlotVoxelStateProjection(axes, descreteState, "yellow")
-#         continuousPlan.append(globalPlanner.GetContinuousState(descreteState))
+    for descreteState in descretePlan:
+        utils.PlotVoxelStateProjection(axes, descreteState, "yellow")
+        continuousPlan.append(globalPlanner.GetContinuousState(descreteState))
 
-#     localPlanner.SetGlobalPlan(continuousPlan)
-#     localPlanner.GetLocalPlan()
+    localPlanner.SetGlobalPlan(continuousPlan)
+    if localPlanner.isActive:
+        sampledState = localPlanner.GetNextState()
+        print("sampledState", sampledState)
+    else:
+        localPlanner.isActive = True
+        sampledState = localPlanner.GetNextState()
+        print("sampledState", sampledState)
     
-# utils.PlotVoxelStateProjection(axes, globalPlanner.startStateDescrete, "blue")
-# utils.PlotVoxelStateProjection(axes, globalPlanner.goalStateDescrete, "green")
+utils.PlotVoxelStateProjection(axes, globalPlanner.startStateDescrete, "blue")
+utils.PlotVoxelStateProjection(axes, globalPlanner.goalStateDescrete, "green")
 plt.show()

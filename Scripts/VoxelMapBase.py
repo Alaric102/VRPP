@@ -74,3 +74,12 @@ class VoxelMap:
     def IsObastacle(self, state: np.ndarray) -> bool:
         x, y, z = state
         return not (self.__IsOnMap(state) and not self.__voxelMapData[x, y, z])
+
+    def GetContinuousState(self, state: np.ndarray) -> np.ndarray:
+        assert self.__voxelMapGridSize.shape == state.shape, "GetContinuousState(): Wrong shape!"
+        return np.array(state*self.__voxelMapGridSize + self.__voxelMapMinCorner , dtype=float)
+
+    def GetDescreteState(self, state: np.ndarray) -> np.ndarray:
+        assert self.__voxelMapGridSize.shape == state.shape, "GetDescreteState(): Wrong shape!"
+        state -= self.__voxelMapMinCorner
+        return np.array(state/self.__voxelMapGridSize , dtype=np.uint)

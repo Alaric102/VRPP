@@ -14,6 +14,8 @@
 
 TcpClient tcpClient(DEFAULT_ADDR, DEFAULT_PORT);
 
+
+
 enum UnityCommands {
     setStartPoint = 1,
     setGoalPoint,
@@ -28,9 +30,13 @@ enum UnityCommands {
 // 4. Send and receive data.
 // 5. Disconnect.
 
+void requestedPose_cb(const geometry_msgs::Pose &msg){
+    std::cout << tcpClient.requestPose(msg) << std::endl;
+}
+
+
 void globalPath_cb(const nav_msgs::Path &msg){
-    std::cout << "received new PATH" << std::endl;
-    tcpClient.sendPath(1, msg.poses);
+    tcpClient.sendPath(msg.poses);
 }
 
 
@@ -63,6 +69,7 @@ int main(int argc, char **argv){
     startPlanMsg.data = false;
 
     ros::Subscriber globalPathSub = nh.subscribe("globalPath", 10, globalPath_cb);
+    ros::Subscriber requestedPoseSub = nh.subscribe("requestedPose", 10, requestedPose_cb);
 
     while(nh.ok()){
         if (tcpClient.isConnected()){

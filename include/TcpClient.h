@@ -25,7 +25,8 @@
 # define PI_NUMBER           3.1415926f
 
 enum ROSCommands {
-    globalPath = 1
+    globalPath = 1,
+    requestedPose
 };
 
 class TcpClient {
@@ -56,7 +57,9 @@ public:
 
     int recvCommand();
 
-    int sendPath(int cmd, const std::vector<geometry_msgs::PoseStamped> &poses);
+    int sendPath(const std::vector<geometry_msgs::PoseStamped> &poses);
+
+    int requestPose(const geometry_msgs::Pose &pose);
 
     geometry_msgs::Vector3 getVector3();
     geometry_msgs::Quaternion getQuaternion();
@@ -73,7 +76,7 @@ private:
     CircleBuffer *circleBuf;
 
     int startId = 0;
-    bool sendBuffer(char *buff, int len);
+    int sendBuffer(char *buff, int len);
     int getRecvMsgStart();
     float getFloat();
     void getFloat(float *fDst);
@@ -129,19 +132,23 @@ bool TcpClient::Reconnect(){
 }
 
 bool TcpClient::isConnected(){
-    char *sendbuf = "0";
-    return sendBuffer(sendbuf, 1);
+    uint8_t *buff = new uint8_t[3];
+    buff[0] = 0xFF;
+    buff[1] = 0xFF;
+    buff[2] = 0x00;
+    // char *sendbuf = "0";
+    return sendBuffer((char *) buff, 3) == 0;
 }
 
 struct addrinfo* TcpClient::getAddrInfo() const {
         return pAddrInfo;
 };
 
-bool TcpClient::sendBuffer(char *buff, int len){
+int TcpClient::sendBuffer(char *buff, int len){
     if (send(socket_, buff, len, 0) == SOCKET_ERROR) {
-        return false;
+        return WSAGetLastError();
     }
-    return true;
+    return 0;
 }
 
 //Return len of received data
@@ -236,16 +243,12 @@ void TcpClient::getFloat(float *fDst){
     circleBuf->GetData((uint8_t*)(fDst), 4);
 }
 
-void TcpClient::GetBytes(float v, uint8_t* dst, unsigned int offset){
-
-}
-
-int TcpClient::sendPath(int cmd, const std::vector<geometry_msgs::PoseStamped> &poses){
+int TcpClient::sendPath(const std::vector<geometry_msgs::PoseStamped> &poses){
     unsigned int buffSize = 2 + 1 + poses.size()*3*4;   // BeginBytes + cmdByte + posesSize*corrdinatesNumber*floatSize
     uint8_t *buff = new uint8_t[buffSize];
     buff[0] = 0xFF;
     buff[1] = 0xFF;
-    buff[2] = (uint8_t)cmd;
+    buff[2] = (uint8_t)globalPath;
     unsigned int offset = 3;
 
     for (int i = 0; i < poses.size(); ++i){
@@ -264,21 +267,52 @@ int TcpClient::sendPath(int cmd, const std::vector<geometry_msgs::PoseStamped> &
         std::memcpy(buff + offset, bytes, 4);
         offset += 4;
 
-        std::cout << (float)poses[i].pose.position.x << ", " << 
-            (float)poses[i].pose.position.y << ", " << 
-            (float)poses[i].pose.position.z << std::endl;
+        // std::cout << (float)poses[i].pose.position.x << ", " << 
+        //     (float)poses[i].pose.position.y << ", " << 
+        //     (float)poses[i].pose.position.z << std::endl;
         // std::cout << "f: " << f << ", bytes: ";
         // for (unsigned int j = 0; j < 4; ++j)
         //     std::cout << +bytes[j] << " ";
         // std::cout << std::endl;
     }
 
-    std::cout << offset << ", " << buffSize << std::endl;
-    std::cout << "Buffer: ";
-    for (unsigned int j = 0; j < buffSize; ++j)
-        std::cout << +buff[j] << " ";
-    std::cout << std::endl;
-    
-
+    // std::cout << offset << ", " << buffSize << std::endl;
+    // std::cout << "Buffer: ";
+    // for (unsigned int j = 0; j < buffSize; ++j)
+    //     std::cout << +buff[j] << " ";
+    // std::cout << std::endl;
     return (int)sendBuffer((char*) buff, buffSize);
+}
+
+int TcpClient::requestPose(const geometry_msgs::Pose &pose){
+    unsigned int buffSize = 2 + 1 + 3*4;   // BeginBytes + cmdByte + corrdinatesNumber*floatSize
+    uint8_t *buff = new uint8_t[buffSize];
+    buff[0] = 0xFF;
+    buff[1] = 0xFF;
+    buff[2] = (uint8_t)requestedPose;
+    unsigned int offset = 3;
+
+    float f = (float)pose.position.x;
+    uint8_t* bytes = reinterpret_cast<uint8_t*>(&f);
+    std::memcpy(buff + offset, bytes, 4);
+    offset += 4;
+
+    f = (float)pose.position.y;
+    bytes = reinterpret_cast<uint8_t*>(&f);
+    std::memcpy(buff + offset, bytes, 4);
+    offset += 4;
+    
+    f = (float)pose.position.z;
+    bytes = reinterpret_cast<uint8_t*>(&f);
+    std::memcpy(buff + offset, bytes, 4);
+    offset += 4;
+
+        // std::cout << (float)poses[i].pose.position.x << ", " << 
+        //     (float)poses[i].pose.position.y << ", " << 
+        //     (float)poses[i].pose.position.z << std::endl;
+        // std::cout << "f: " << f << ", bytes: ";
+        // for (unsigned int j = 0; j < 4; ++j)
+        //     std::cout << +bytes[j] << " ";
+        // std::cout << std::endl;
+    return sendBuffer((char*) buff, buffSize);
 }

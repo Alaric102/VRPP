@@ -32,3 +32,18 @@ def PlotVoxelStateProjection(axes, state: np.ndarray, color = "blue"):
     x, y, z = state
     circle = plt.Circle((z,x), 0.5, color=color)
     axes.add_patch(circle)
+
+def PlotLocalMap(start, end):
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(111, projection='3d')
+    ax.azim = 90
+    ax.elev = 0
+    x, y, z = start
+    ax.scatter(x, y, z, marker='x', c="green")
+    x, y, z = end
+    ax.scatter(x, y, z, marker='x', c="blue")
+    return fig, ax
+
+def PlotLocalState(axes, state: np.ndarray, color = "blue"):
+    x, y, z = state
+    axes.scatter(x, y, z, c=color, s=50)

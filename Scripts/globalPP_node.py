@@ -33,7 +33,7 @@ def startPlan_cb(msg):
 
 def main():
     rospy.init_node('globalPP_node', anonymous=True)
-    rate = rospy.Rate(1) # 10hz
+    rate = rospy.Rate(10) # 10hz
 
     rospy.Subscriber("startState", Transform, startState_cb)
     rospy.Subscriber("goalState", Transform, goalState_cb)
@@ -59,7 +59,6 @@ def main():
 
                     globalPathMsg.poses.append(poseMsg)
                 globalPathPub.publish(globalPathMsg)
-
         rate.sleep()
         # rospy.
 
