@@ -44,9 +44,6 @@ public:
     // init WSA
     bool init();
 
-    // Create a SOCKET for connecting to server
-    bool createSocket();
-
     bool connectScoket();
     
     bool Reconnect();
@@ -105,16 +102,22 @@ bool TcpClient::init(){
     return true;
 }
 
-// Connect SOCKET to server
+/*
+    Connect socket to server. Will recreate socket, then try to connect.
+    Close socket if connection failed.
+    Return: true if connected, false otherwise.
+*/
 bool TcpClient::connectScoket(){
     isConnected = false;
 
+    // recreate socket
     socket_ = socket( pAddrInfo->ai_family, pAddrInfo->ai_socktype, pAddrInfo->ai_protocol);
     if (socket_ == INVALID_SOCKET) {
         std::cerr << "connectScoket(" << port_ << ") to create socket: " << WSAGetLastError() << std::endl;
         return false;
     }
 
+    // try to connect socket
     if (SOCKET_ERROR == connect(socket_, pAddrInfo->ai_addr, (int)pAddrInfo->ai_addrlen)) {
         std::cerr << "connectScoket(" << port_ << ") failed to connect: " << WSAGetLastError() << std::endl;
         if (SOCKET_ERROR == closesocket(socket_)){
@@ -123,16 +126,25 @@ bool TcpClient::connectScoket(){
         socket_ = INVALID_SOCKET;
         return false;
     }
+
     isConnected = true;
     std::cout << "connectScoket(" << port_ << ") connected." << std::endl;
     return true;
 }
 
+/*
+    Reconnect socket to server. Will close socket, then call bool TcpClient::connectScoket();
+    Return: true if reconnected, false otherwise.
+*/
 bool TcpClient::Reconnect(){
-    std::cout << "Reconnecting port: " << port_ << std::endl;        
+    std::cout << "Reconnecting port: " << port_ << std::endl;
+
+    // Close socket before reconnecting
     if (SOCKET_ERROR == closesocket(socket_)){
         std::cerr << "Reconnect(" << port_ << ") failed to close socket: " << WSAGetLastError() << std::endl;
     }
+
+    // Try to connect socket
     if (!connectScoket())
         return false;
     
@@ -144,7 +156,6 @@ bool TcpClient::Reconnect(){
 struct addrinfo* TcpClient::getAddrInfo() const {
         return pAddrInfo;
 };
-
 
 geometry_msgs::Vector3 TcpClient::getVector3(){
     geometry_msgs::Vector3 res;
