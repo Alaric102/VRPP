@@ -10,6 +10,7 @@ private:
     uint8_t* buffer_;
     size_t begin_;
     size_t end_;
+    bool isFull_;
 
 public:
     CircleBuffer(const size_t size);
@@ -22,6 +23,7 @@ public:
 
     void AddItem(uint8_t data);
     void AddData(uint8_t* pSrc, unsigned long len);
+    bool IsFull() const;
 
     uint8_t GetItem();
     void GetData(uint8_t* pDst, unsigned long len);
@@ -30,7 +32,6 @@ public:
         return buffer_[end_];
     }
 
-    bool isFull;
 };
 
 CircleBuffer::CircleBuffer(const size_t size): size_(size) {
@@ -45,11 +46,11 @@ CircleBuffer::~CircleBuffer() {
 void CircleBuffer::Reset() {
     begin_ = 0;
     end_ = 0;
-    isFull = false;
+    isFull_ = false;
 }
 
 bool CircleBuffer::IsEmpty() const {
-    return (!isFull && (begin_ == end_));
+    return (!isFull_ && (begin_ == end_));
 }
 
 // return maximum number of elements in buffer;
@@ -59,7 +60,7 @@ size_t CircleBuffer::GetCapacity() const {
 
 // return number of elements in buffer;
 size_t CircleBuffer::GetSize() const {
-    if (isFull){
+    if (isFull_){
         return size_;
     }
     if ( begin_ >= end_ ){
@@ -71,11 +72,11 @@ size_t CircleBuffer::GetSize() const {
 
 void CircleBuffer::AddItem(uint8_t data){
     buffer_[begin_] = data;
-    if (isFull){
+    if (isFull_){
         end_ = (end_ + 1) % size_;
     }
     begin_ = (begin_ + 1) % size_;
-    isFull = begin_ == end_;
+    isFull_ = begin_ == end_;
 }
 
 void CircleBuffer::AddData(uint8_t* pData, unsigned long len){
@@ -86,7 +87,7 @@ void CircleBuffer::AddData(uint8_t* pData, unsigned long len){
 
 uint8_t CircleBuffer::GetItem(){
     uint8_t res = buffer_[end_];
-    isFull = false;
+    isFull_ = false;
     end_ = (end_ + 1) % size_;
     return res;
 }
@@ -95,6 +96,10 @@ void CircleBuffer::GetData(uint8_t* pDst, unsigned long len){
     for (unsigned long i = 0; i < len; ++i){
         pDst[i] = GetItem();
     }
+}
+
+bool CircleBuffer::IsFull() const{
+    return isFull_;
 }
 
 void CircleBuffer::PrintBuffer() const{

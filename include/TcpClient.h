@@ -51,7 +51,7 @@ public:
     
     bool Reconnect();
     
-    bool isConnected();
+    bool IsConnected();
 
     int recvBuffer();
 
@@ -74,13 +74,17 @@ private:
     const static int recvbuflen = 512;
     char recvbuf[recvbuflen];
     CircleBuffer *circleBuf;
+    bool isConnected = false;
 
     int startId = 0;
-    int sendBuffer(char *buff, int len);
     int getRecvMsgStart();
     float getFloat();
     void getFloat(float *fDst);
     void GetBytes(float v, uint8_t* dst, unsigned int offset = 0);
+
+    
+    int SendBuffer(char *buff, int len);
+    void PrintBuffer(char *buff, int len) const;
 };
 
 bool TcpClient::init(){
@@ -101,105 +105,46 @@ bool TcpClient::init(){
     return true;
 }
 
-bool TcpClient::createSocket(){
-    socket_ = socket( pAddrInfo->ai_family, pAddrInfo->ai_socktype, pAddrInfo->ai_protocol);
-    if (socket_ == INVALID_SOCKET) {
-        return false;
-    }
-    return true;
-}
-
 // Connect SOCKET to server
 bool TcpClient::connectScoket(){
-    if (connect(socket_, pAddrInfo->ai_addr, (int)pAddrInfo->ai_addrlen)) {
-        closesocket(socket_);
+    isConnected = false;
+
+    socket_ = socket( pAddrInfo->ai_family, pAddrInfo->ai_socktype, pAddrInfo->ai_protocol);
+    if (socket_ == INVALID_SOCKET) {
+        std::cerr << "connectScoket(" << port_ << ") to create socket: " << WSAGetLastError() << std::endl;
+        return false;
+    }
+
+    if (SOCKET_ERROR == connect(socket_, pAddrInfo->ai_addr, (int)pAddrInfo->ai_addrlen)) {
+        std::cerr << "connectScoket(" << port_ << ") failed to connect: " << WSAGetLastError() << std::endl;
+        if (SOCKET_ERROR == closesocket(socket_)){
+            std::cerr << "connectScoket(" << port_ << ") failed to close socket: " << WSAGetLastError() << std::endl;
+        }
         socket_ = INVALID_SOCKET;
         return false;
     }
+    isConnected = true;
+    std::cout << "connectScoket(" << port_ << ") connected." << std::endl;
     return true;
 }
 
 bool TcpClient::Reconnect(){
-    closesocket(socket_);
-    if (!createSocket()){
-        return false;
+    std::cout << "Reconnecting port: " << port_ << std::endl;        
+    if (SOCKET_ERROR == closesocket(socket_)){
+        std::cerr << "Reconnect(" << port_ << ") failed to close socket: " << WSAGetLastError() << std::endl;
     }
-
-    if (!connectScoket()) {
+    if (!connectScoket())
         return false;
-    }
+    
+    isConnected = true;
     return true;
 }
 
-bool TcpClient::isConnected(){
-    uint8_t *buff = new uint8_t[3];
-    buff[0] = 0xFF;
-    buff[1] = 0xFF;
-    buff[2] = 0x00;
-    // char *sendbuf = "0";
-    return sendBuffer((char *) buff, 3) == 0;
-}
 
 struct addrinfo* TcpClient::getAddrInfo() const {
         return pAddrInfo;
 };
 
-int TcpClient::sendBuffer(char *buff, int len){
-    if (send(socket_, buff, len, 0) == SOCKET_ERROR) {
-        return WSAGetLastError();
-    }
-    return 0;
-}
-
-//Return len of received data
-int TcpClient::recvBuffer(){
-    bool l = true;
-    if (SOCKET_ERROR == ioctlsocket (socket_, FIONBIO, (unsigned long*) &l) ) {
-        std::cout << "recvBuffer() error: " << WSAGetLastError() << std::endl;
-        return -1;
-    }
-    int len = 0;
-    if ( SOCKET_ERROR == (len=recv(socket_, (char *)&recvbuf, recvbuflen, 0) )){
-        if (WSAGetLastError() != 10035)
-            std::cout << "recvBuffer() error: " << WSAGetLastError() << std::endl;
-        return -1;
-    }
-    // std::cout << "Received " << len << " bytes" << std::endl;
-    return len;
-}
-
-int TcpClient::recvCommand(){
-    if (circleBuf->IsEmpty()){
-        // std::cout << "Empty circle buffer." << std::endl;
-        int recvLen = 0;
-        if ((recvLen = recvBuffer()) > 0){
-            circleBuf->AddData((uint8_t*)recvbuf, recvLen);
-            // std::cout << "Added ";
-            // circleBuf->PrintBuffer();
-        } else {
-            // std::cout << "Nothing to Add" << std::endl;
-            return 0;
-        }
-    }
-    
-    // Get first head byte
-    uint8_t fhead = circleBuf->GetItem();
-    uint8_t shead = circleBuf->PredictNext();
-    if ((fhead == 255) && (shead == 255)){
-        // std::cout << "Message head found" << std::endl;
-        circleBuf->GetItem();
-    } else {
-        return 0;
-    }
-    // Get message length
-    uint16_t msgLen = 0;
-    circleBuf->GetData((uint8_t*)(&msgLen), 2);
-    // Get message command code
-    uint16_t cmdCode = 0;
-    circleBuf->GetData((uint8_t*)(&cmdCode), 2);
-
-    return cmdCode;
-}
 
 geometry_msgs::Vector3 TcpClient::getVector3(){
     geometry_msgs::Vector3 res;
@@ -281,7 +226,8 @@ int TcpClient::sendPath(const std::vector<geometry_msgs::PoseStamped> &poses){
     // for (unsigned int j = 0; j < buffSize; ++j)
     //     std::cout << +buff[j] << " ";
     // std::cout << std::endl;
-    return (int)sendBuffer((char*) buff, buffSize);
+    // return (int)sendBuffer((char*) buff, buffSize);
+    return 0;
 }
 
 int TcpClient::requestPose(const geometry_msgs::Pose &pose){
@@ -307,12 +253,88 @@ int TcpClient::requestPose(const geometry_msgs::Pose &pose){
     std::memcpy(buff + offset, bytes, 4);
     offset += 4;
 
-        // std::cout << (float)poses[i].pose.position.x << ", " << 
-        //     (float)poses[i].pose.position.y << ", " << 
-        //     (float)poses[i].pose.position.z << std::endl;
-        // std::cout << "f: " << f << ", bytes: ";
-        // for (unsigned int j = 0; j < 4; ++j)
-        //     std::cout << +bytes[j] << " ";
-        // std::cout << std::endl;
-    return sendBuffer((char*) buff, buffSize);
+    return SendBuffer((char*) buff, buffSize);
+}
+
+int TcpClient::SendBuffer(char *buff, int len){
+    int sendResult = 0;
+    if (send(socket_, buff, len, 0) == SOCKET_ERROR) {
+        sendResult = WSAGetLastError();
+        isConnected = false;
+        std::cout << "sendBuffer error: " << sendResult << std::endl;
+    }
+    return sendResult;
+}
+
+int TcpClient::recvBuffer(){
+    bool l = true;
+    if (SOCKET_ERROR == ioctlsocket (socket_, FIONBIO, (unsigned long*) &l) ) {
+        std::cerr << "ioctlsocket() error: " << WSAGetLastError() << std::endl;
+        isConnected = false;
+        return -1;
+    }
+
+    int recvLen = 0;
+    if ( SOCKET_ERROR == (recvLen=recv(socket_, (char *)&recvbuf, recvbuflen, 0) )){
+        int err = WSAGetLastError();
+        switch (err) {
+            case (WSAEWOULDBLOCK):{ // Resource temporarily unavailable.
+                return 0;
+            }
+            default: // other errors
+                std::cerr << "recv() error: " << err << std::endl;
+                isConnected = false;
+                return -1;
+        }
+    }
+
+    return recvLen;
+}
+
+void TcpClient::PrintBuffer(char *buff, int len) const{
+    std::cout << port_ << " buffer " << len << " bytes: ";
+    for (int i = 0; i < len; ++i)
+        std::cout << +(uint8_t)buff[i] << " ";
+    std::cout << std::endl;
+}
+
+bool TcpClient::IsConnected(){
+    // uint8_t *buff = new uint8_t[3];
+    // buff[0] = 0xFF; buff[1] = 0xFF; buff[2] = 0x00;
+    // SendBuffer((char*)buff, 3);
+    return isConnected;
+}
+
+int TcpClient::recvCommand(){  
+    if (circleBuf->IsEmpty()){
+        // std::cout << "Empty circle buffer." << std::endl;
+        int recvLen = 0;
+        if ((recvLen = recvBuffer()) > 0){
+            circleBuf->AddData((uint8_t*)recvbuf, recvLen);
+            // std::cout << "Added ";
+            // circleBuf->PrintBuffer();
+        } else {
+            // std::cout << "Nothing to Add" << std::endl;
+            return 0;
+        }
+    }  
+
+    uint8_t fhead = circleBuf->GetItem();
+    uint8_t shead = circleBuf->PredictNext();
+    if ((fhead == 255) && (shead == 255)){
+        // std::cout << "Message head found" << std::endl;
+        circleBuf->GetItem();
+    } else {
+        return -1;
+    }
+    
+    // Get message length
+    uint16_t msgLen = 0;
+    circleBuf->GetData((uint8_t*)(&msgLen), 2);
+
+    // Get message command code
+    uint16_t cmdCode = 0;
+    circleBuf->GetData((uint8_t*)(&cmdCode), 2);
+
+    return cmdCode;
 }

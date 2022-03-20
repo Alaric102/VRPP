@@ -9,12 +9,12 @@
 
 #include "TcpClient.h"
 
-#define DEFAULT_PORT "12345"
+#define DEFAULT_PORT_SEND "12345"
+#define DEFAULT_PORT_RECV "12344"
 #define DEFAULT_ADDR "localhost"
 
-TcpClient tcpClient(DEFAULT_ADDR, DEFAULT_PORT);
-
-
+TcpClient tcpSender(DEFAULT_ADDR, DEFAULT_PORT_SEND);
+TcpClient tcpReceiver(DEFAULT_ADDR, DEFAULT_PORT_RECV);
 
 enum UnityCommands {
     setStartPoint = 1,
@@ -31,79 +31,100 @@ enum UnityCommands {
 // 5. Disconnect.
 
 void requestedPose_cb(const geometry_msgs::Pose &msg){
-    std::cout << tcpClient.requestPose(msg) << std::endl;
+    // std::cout << tcpClient.requestPose(msg) << std::endl;
 }
 
 
 void globalPath_cb(const nav_msgs::Path &msg){
-    tcpClient.sendPath(msg.poses);
+    // tcpClient.sendPath(msg.poses);
 }
 
 
 int main(int argc, char **argv){
-
-    if (!tcpClient.init()){
-        std::cout << "Failed to init TCP Client." << std::endl;
+    // Init sender (make one function in future)
+    if (!tcpSender.init()){
+        std::cout << "Failed to init TCP Sender." << std::endl;
         return 1;
     }
 
-    if (!tcpClient.createSocket()){
-        std::cout << "Failed to Create socket." << std::endl;
+    if (!tcpReceiver.init()){
+        std::cout << "Failed to init TCP Receiver." << std::endl;
         return 1;
     }
+    
+    if (!tcpSender.connectScoket()){}
 
-    if (!tcpClient.connectScoket()){
-        std::cout << "Failed to connect socket." << std::endl;
-    }
+    if (!tcpReceiver.connectScoket()){}
 
     ros::init(argc, argv, "client_node");
     ros::NodeHandle nh;
     ros::Rate loopRate(10);
 
-    ros::Publisher startStatePub = nh.advertise<geometry_msgs::Transform>("startState", 1);
-    ros::Publisher goalStatePub = nh.advertise<geometry_msgs::Transform>("goalState", 1);
-    static geometry_msgs::Transform stateMsg;
+    // ros::Publisher startStatePub = nh.advertise<geometry_msgs::Transform>("startState", 1);
+    // ros::Publisher goalStatePub = nh.advertise<geometry_msgs::Transform>("goalState", 1);
+    // static geometry_msgs::Transform stateMsg;
 
-    ros::Publisher startPlanPub = nh.advertise<std_msgs::Bool>("startPlan", 1);
-    static std_msgs::Bool startPlanMsg;
-    startPlanMsg.data = false;
+    // ros::Publisher startPlanPub = nh.advertise<std_msgs::Bool>("startPlan", 1);
+    // static std_msgs::Bool startPlanMsg;
+    // startPlanMsg.data = false;
 
-    ros::Subscriber globalPathSub = nh.subscribe("globalPath", 10, globalPath_cb);
-    ros::Subscriber requestedPoseSub = nh.subscribe("requestedPose", 10, requestedPose_cb);
+    // ros::Subscriber globalPathSub = nh.subscribe("globalPath", 10, globalPath_cb);
+    // ros::Subscriber requestedPoseSub = nh.subscribe("requestedPose", 10, requestedPose_cb);
 
+
+    int counter = 0;
     while(nh.ok()){
-        if (tcpClient.isConnected()){
-            
+        // if (tcpSender.IsConnected()){
+        //     // std::cout << "Sender is connected." << std::endl;
+        //     // counter = ++counter % 100;
+        //     // geometry_msgs::Pose msg;
+        //     // msg.position.x = 1.5 + counter;
+        //     // msg.position.y = -0.1 - counter;
+        //     // msg.position.z = 0.01 * counter;
+        //     // tcpSender.requestPose(msg);
+        // } else {
+        //     tcpSender.Reconnect();
+        // }
+
+
+        if (tcpReceiver.IsConnected()){
+            int recvNum = tcpReceiver.recvBuffer();
+            if (recvNum > 0)
+                std::cout << "Received: " << recvNum << std::endl;
+
+            // tcpReceiver.recvBuffer();
+            // std::cout << "Recv len: " << tcpReceiver.recvBuffer() << std::endl;
+            // int cmd = tcpReceiver.recvCommand();
+            // switch (cmd) {
+            //     case setStartPoint: {
+            //         std::cout << "setStartPoint" << std::endl;
+            //         // stateMsg.translation = tcpReceiver.getVector3();
+            //         // stateMsg.rotation = tcpReceiver.getQuaternion();
+            //         // startStatePub.publish(stateMsg);
+            //         break;                
+            //     } case setGoalPoint: {
+            //         std::cout << "setGoalPoint" << std::endl;
+            //         // stateMsg.translation = tcpReceiver.getVector3();
+            //         // stateMsg.rotation = tcpReceiver.getQuaternion();
+            //         // goalStatePub.publish(stateMsg);
+            //         break;
+            //     } case startPlanning: {
+            //         std::cout << "startPlanning" << std::endl;
+            //         // startPlanMsg.data = true;
+            //         // startPlanPub.publish(startPlanMsg);
+            //         break;
+            //     }       
+            //     default:{
+            //         // std::cout << "Unrecognized command: " << cmd << std::endl;
+            //         break;
+            //     }
+            // }
         } else {
-            tcpClient.Reconnect();
-            std::cout << "Reconnecting" << std::endl;
+            tcpReceiver.Reconnect();
         }
         
-        int cmd = tcpClient.recvCommand();
-        switch (cmd) {
-            case setStartPoint: {
-                stateMsg.translation = tcpClient.getVector3();
-                stateMsg.rotation = tcpClient.getQuaternion();
-                startStatePub.publish(stateMsg);
-                break;                
-            } case setGoalPoint: {
-                stateMsg.translation = tcpClient.getVector3();
-                stateMsg.rotation = tcpClient.getQuaternion();
-                goalStatePub.publish(stateMsg);
-                break;
-            } case startPlanning: {
-                startPlanMsg.data = true;
-                startPlanPub.publish(startPlanMsg);
-                break;
-            }       
-            default:{
-                // std::cout << "Unrecognized command: " << cmd << std::endl;
-                break;
-            }
-        }
 
         ros::spinOnce();
-        loopRate.sleep();
     }
     return 0;
 }
