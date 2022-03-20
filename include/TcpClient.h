@@ -14,31 +14,22 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-#include <geometry_msgs/Transform.h>
-#include <geometry_msgs/PoseStamped.h>
-#include <nav_msgs/Path.h>
 
-#include "CircleBuffer.h"
+// #include "CircleBuffer.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 
-# define PI_NUMBER           3.1415926f
-
-enum ROSCommands {
-    globalPath = 1,
-    requestedPose
-};
 
 class TcpClient {
 public:
     TcpClient(const PCSTR address, const PCSTR port):
     port_(port),
     address_(address) {
-        circleBuf = new CircleBuffer(512);
+        // circleBuf = new CircleBuffer(512);
     };
 
     TcpClient::~TcpClient() {
-        delete circleBuf;
+        // delete circleBuf;
     };
     
     // init WSA
@@ -52,14 +43,11 @@ public:
 
     int recvBuffer();
 
-    int recvCommand();
-
-    int sendPath(const std::vector<geometry_msgs::PoseStamped> &poses);
-
-    int requestPose(const geometry_msgs::Pose &pose);
-
-    geometry_msgs::Vector3 getVector3();
-    geometry_msgs::Quaternion getQuaternion();
+    uint8_t* GetReceived(const int &size){
+        uint8_t* res = new uint8_t[size];
+        memcpy(res, recvbuf, (size_t)size);
+        return res;
+    }
 
     struct addrinfo* getAddrInfo() const;
 private:
@@ -70,7 +58,7 @@ private:
 
     const static int recvbuflen = 512;
     char recvbuf[recvbuflen];
-    CircleBuffer *circleBuf;
+    // CircleBuffer *circleBuf;
     bool isConnected = false;
 
     int startId = 0;
@@ -103,9 +91,9 @@ bool TcpClient::init(){
 }
 
 /*
-    Connect socket to server. Will recreate socket, then try to connect.
-    Close socket if connection failed.
-    Return: true if connected, false otherwise.
+ *Connect socket to server. Will recreate socket, then try to connect.
+ *Close socket if connection failed.
+ *Return: true if connected, false otherwise.
 */
 bool TcpClient::connectScoket(){
     isConnected = false;
@@ -133,8 +121,9 @@ bool TcpClient::connectScoket(){
 }
 
 /*
-    Reconnect socket to server. Will close socket, then call bool TcpClient::connectScoket();
-    Return: true if reconnected, false otherwise.
+ *Reconnect socket to server. 
+ *Will close socket, then call bool TcpClient::connectScoket();
+ *Return: true if reconnected, false otherwise.
 */
 bool TcpClient::Reconnect(){
     std::cout << "Reconnecting port: " << port_ << std::endl;
@@ -157,115 +146,73 @@ struct addrinfo* TcpClient::getAddrInfo() const {
         return pAddrInfo;
 };
 
-geometry_msgs::Vector3 TcpClient::getVector3(){
-    geometry_msgs::Vector3 res;
-    res.x = getFloat();
-    res.y = getFloat();
-    res.z = getFloat();
-    return res;
-}
+// int TcpClient::sendPath(const std::vector<geometry_msgs::PoseStamped> &poses){
+//     unsigned int buffSize = 2 + 1 + poses.size()*3*4;   // BeginBytes + cmdByte + posesSize*corrdinatesNumber*floatSize
+//     uint8_t *buff = new uint8_t[buffSize];
+//     buff[0] = 0xFF;
+//     buff[1] = 0xFF;
+//     buff[2] = (uint8_t)globalPath;
+//     unsigned int offset = 3;
 
-geometry_msgs::Quaternion TcpClient::getQuaternion(){
-    geometry_msgs::Quaternion res;
-    float roll;
-    getFloat(&roll);
-    float pitch;
-    getFloat(&pitch);
-    float yaw;
-    getFloat(&yaw);
-    
-    double cy = cos(yaw*PI_NUMBER/180.0f * 0.5);
-    double sy = sin(yaw*PI_NUMBER/180.0f * 0.5);
-    double cp = cos(pitch*PI_NUMBER/180.0f * 0.5);
-    double sp = sin(pitch*PI_NUMBER/180.0f * 0.5);
-    double cr = cos(roll*PI_NUMBER/180.0f * 0.5);
-    double sr = sin(roll*PI_NUMBER/180.0f * 0.5);
+//     for (int i = 0; i < poses.size(); ++i){
+//         float f = (float)poses[i].pose.position.x;
+//         uint8_t* bytes = reinterpret_cast<uint8_t*>(&f);
+//         std::memcpy(buff + offset, bytes, 4);
+//         offset += 4;
 
-    res.w = cr * cp * cy + sr * sp * sy;
-    res.x = sr * cp * cy - cr * sp * sy;
-    res.y = cr * sp * cy + sr * cp * sy;
-    res.z = cr * cp * sy - sr * sp * cy;
-
-    return res;
-}
-
-float TcpClient::getFloat(){
-    float res;
-    circleBuf->GetData((uint8_t*)(&res), 4);
-    return res;
-}
-
-void TcpClient::getFloat(float *fDst){
-    circleBuf->GetData((uint8_t*)(fDst), 4);
-}
-
-int TcpClient::sendPath(const std::vector<geometry_msgs::PoseStamped> &poses){
-    unsigned int buffSize = 2 + 1 + poses.size()*3*4;   // BeginBytes + cmdByte + posesSize*corrdinatesNumber*floatSize
-    uint8_t *buff = new uint8_t[buffSize];
-    buff[0] = 0xFF;
-    buff[1] = 0xFF;
-    buff[2] = (uint8_t)globalPath;
-    unsigned int offset = 3;
-
-    for (int i = 0; i < poses.size(); ++i){
-        float f = (float)poses[i].pose.position.x;
-        uint8_t* bytes = reinterpret_cast<uint8_t*>(&f);
-        std::memcpy(buff + offset, bytes, 4);
-        offset += 4;
-
-        f = (float)poses[i].pose.position.y;
-        bytes = reinterpret_cast<uint8_t*>(&f);
-        std::memcpy(buff + offset, bytes, 4);
-        offset += 4;
+//         f = (float)poses[i].pose.position.y;
+//         bytes = reinterpret_cast<uint8_t*>(&f);
+//         std::memcpy(buff + offset, bytes, 4);
+//         offset += 4;
         
-        f = (float)poses[i].pose.position.z;
-        bytes = reinterpret_cast<uint8_t*>(&f);
-        std::memcpy(buff + offset, bytes, 4);
-        offset += 4;
+//         f = (float)poses[i].pose.position.z;
+//         bytes = reinterpret_cast<uint8_t*>(&f);
+//         std::memcpy(buff + offset, bytes, 4);
+//         offset += 4;
 
-        // std::cout << (float)poses[i].pose.position.x << ", " << 
-        //     (float)poses[i].pose.position.y << ", " << 
-        //     (float)poses[i].pose.position.z << std::endl;
-        // std::cout << "f: " << f << ", bytes: ";
-        // for (unsigned int j = 0; j < 4; ++j)
-        //     std::cout << +bytes[j] << " ";
-        // std::cout << std::endl;
-    }
+//         // std::cout << (float)poses[i].pose.position.x << ", " << 
+//         //     (float)poses[i].pose.position.y << ", " << 
+//         //     (float)poses[i].pose.position.z << std::endl;
+//         // std::cout << "f: " << f << ", bytes: ";
+//         // for (unsigned int j = 0; j < 4; ++j)
+//         //     std::cout << +bytes[j] << " ";
+//         // std::cout << std::endl;
+//     }
 
-    // std::cout << offset << ", " << buffSize << std::endl;
-    // std::cout << "Buffer: ";
-    // for (unsigned int j = 0; j < buffSize; ++j)
-    //     std::cout << +buff[j] << " ";
-    // std::cout << std::endl;
-    // return (int)sendBuffer((char*) buff, buffSize);
-    return 0;
-}
+//     // std::cout << offset << ", " << buffSize << std::endl;
+//     // std::cout << "Buffer: ";
+//     // for (unsigned int j = 0; j < buffSize; ++j)
+//     //     std::cout << +buff[j] << " ";
+//     // std::cout << std::endl;
+//     // return (int)sendBuffer((char*) buff, buffSize);
+//     return 0;
+// }
 
-int TcpClient::requestPose(const geometry_msgs::Pose &pose){
-    unsigned int buffSize = 2 + 1 + 3*4;   // BeginBytes + cmdByte + corrdinatesNumber*floatSize
-    uint8_t *buff = new uint8_t[buffSize];
-    buff[0] = 0xFF;
-    buff[1] = 0xFF;
-    buff[2] = (uint8_t)requestedPose;
-    unsigned int offset = 3;
+// int TcpClient::requestPose(const geometry_msgs::Pose &pose){
+//     unsigned int buffSize = 2 + 1 + 3*4;   // BeginBytes + cmdByte + corrdinatesNumber*floatSize
+//     uint8_t *buff = new uint8_t[buffSize];
+//     buff[0] = 0xFF;
+//     buff[1] = 0xFF;
+//     buff[2] = (uint8_t)requestedPose;
+//     unsigned int offset = 3;
 
-    float f = (float)pose.position.x;
-    uint8_t* bytes = reinterpret_cast<uint8_t*>(&f);
-    std::memcpy(buff + offset, bytes, 4);
-    offset += 4;
+//     float f = (float)pose.position.x;
+//     uint8_t* bytes = reinterpret_cast<uint8_t*>(&f);
+//     std::memcpy(buff + offset, bytes, 4);
+//     offset += 4;
 
-    f = (float)pose.position.y;
-    bytes = reinterpret_cast<uint8_t*>(&f);
-    std::memcpy(buff + offset, bytes, 4);
-    offset += 4;
+//     f = (float)pose.position.y;
+//     bytes = reinterpret_cast<uint8_t*>(&f);
+//     std::memcpy(buff + offset, bytes, 4);
+//     offset += 4;
     
-    f = (float)pose.position.z;
-    bytes = reinterpret_cast<uint8_t*>(&f);
-    std::memcpy(buff + offset, bytes, 4);
-    offset += 4;
+//     f = (float)pose.position.z;
+//     bytes = reinterpret_cast<uint8_t*>(&f);
+//     std::memcpy(buff + offset, bytes, 4);
+//     offset += 4;
 
-    return SendBuffer((char*) buff, buffSize);
-}
+//     return SendBuffer((char*) buff, buffSize);
+// }
 
 int TcpClient::SendBuffer(char *buff, int len){
     int sendResult = 0;
@@ -285,8 +232,9 @@ int TcpClient::recvBuffer(){
         return -1;
     }
 
+    // Proccess socket.recv()
     int recvLen = 0;
-    if ( SOCKET_ERROR == (recvLen=recv(socket_, (char *)&recvbuf, recvbuflen, 0) )){
+    if ( SOCKET_ERROR == (recvLen = recv(socket_, (char *)&recvbuf, recvbuflen, 0)) ){
         int err = WSAGetLastError();
         switch (err) {
             case (WSAEWOULDBLOCK):{ // Resource temporarily unavailable.
@@ -298,6 +246,10 @@ int TcpClient::recvBuffer(){
                 return -1;
         }
     }
+
+    // Add to circle buffer if something was received
+    // if (recvLen > 0)
+    //     circleBuf->AddData((uint8_t *)&recvbuf, recvLen);
 
     return recvLen;
 }
@@ -314,38 +266,4 @@ bool TcpClient::IsConnected(){
     // buff[0] = 0xFF; buff[1] = 0xFF; buff[2] = 0x00;
     // SendBuffer((char*)buff, 3);
     return isConnected;
-}
-
-int TcpClient::recvCommand(){  
-    if (circleBuf->IsEmpty()){
-        // std::cout << "Empty circle buffer." << std::endl;
-        int recvLen = 0;
-        if ((recvLen = recvBuffer()) > 0){
-            circleBuf->AddData((uint8_t*)recvbuf, recvLen);
-            // std::cout << "Added ";
-            // circleBuf->PrintBuffer();
-        } else {
-            // std::cout << "Nothing to Add" << std::endl;
-            return 0;
-        }
-    }  
-
-    uint8_t fhead = circleBuf->GetItem();
-    uint8_t shead = circleBuf->PredictNext();
-    if ((fhead == 255) && (shead == 255)){
-        // std::cout << "Message head found" << std::endl;
-        circleBuf->GetItem();
-    } else {
-        return -1;
-    }
-    
-    // Get message length
-    uint16_t msgLen = 0;
-    circleBuf->GetData((uint8_t*)(&msgLen), 2);
-
-    // Get message command code
-    uint16_t cmdCode = 0;
-    circleBuf->GetData((uint8_t*)(&cmdCode), 2);
-
-    return cmdCode;
 }

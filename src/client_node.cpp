@@ -8,6 +8,7 @@
 #include <std_msgs/Bool.h>
 
 #include "TcpClient.h"
+#include "CircleBuffer.h"
 
 #define DEFAULT_PORT_SEND "12345"
 #define DEFAULT_PORT_RECV "12344"
@@ -15,6 +16,7 @@
 
 TcpClient tcpSender(DEFAULT_ADDR, DEFAULT_PORT_SEND);
 TcpClient tcpReceiver(DEFAULT_ADDR, DEFAULT_PORT_RECV);
+CircleBuffer circleBuffer(512);
 
 enum UnityCommands {
     setStartPoint = 1,
@@ -22,6 +24,10 @@ enum UnityCommands {
     startPlanning
 };
 
+enum ROSCommands {
+    globalPath = 1,
+    requestedPose
+};
 
 // Client
 // 1. Initialize Winsock.
@@ -60,13 +66,13 @@ int main(int argc, char **argv){
     ros::NodeHandle nh;
     ros::Rate loopRate(10);
 
-    // ros::Publisher startStatePub = nh.advertise<geometry_msgs::Transform>("startState", 1);
-    // ros::Publisher goalStatePub = nh.advertise<geometry_msgs::Transform>("goalState", 1);
-    // static geometry_msgs::Transform stateMsg;
+    ros::Publisher startStatePub = nh.advertise<geometry_msgs::Transform>("startState", 1);
+    ros::Publisher goalStatePub = nh.advertise<geometry_msgs::Transform>("goalState", 1);
+    static geometry_msgs::Transform stateMsg;
 
-    // ros::Publisher startPlanPub = nh.advertise<std_msgs::Bool>("startPlan", 1);
-    // static std_msgs::Bool startPlanMsg;
-    // startPlanMsg.data = false;
+    ros::Publisher startPlanPub = nh.advertise<std_msgs::Bool>("startPlan", 1);
+    static std_msgs::Bool startPlanMsg;
+    startPlanMsg.data = false;
 
     // ros::Subscriber globalPathSub = nh.subscribe("globalPath", 10, globalPath_cb);
     // ros::Subscriber requestedPoseSub = nh.subscribe("requestedPose", 10, requestedPose_cb);
@@ -87,40 +93,48 @@ int main(int argc, char **argv){
         // }
 
 
+        // receive from Unity
         if (tcpReceiver.IsConnected()){
-            int recvNum = tcpReceiver.recvBuffer();
-            if (recvNum > 0)
-                std::cout << "Received: " << recvNum << std::endl;
-
-            // tcpReceiver.recvBuffer();
-            // std::cout << "Recv len: " << tcpReceiver.recvBuffer() << std::endl;
-            // int cmd = tcpReceiver.recvCommand();
-            // switch (cmd) {
-            //     case setStartPoint: {
-            //         std::cout << "setStartPoint" << std::endl;
-            //         // stateMsg.translation = tcpReceiver.getVector3();
-            //         // stateMsg.rotation = tcpReceiver.getQuaternion();
-            //         // startStatePub.publish(stateMsg);
-            //         break;                
-            //     } case setGoalPoint: {
-            //         std::cout << "setGoalPoint" << std::endl;
-            //         // stateMsg.translation = tcpReceiver.getVector3();
-            //         // stateMsg.rotation = tcpReceiver.getQuaternion();
-            //         // goalStatePub.publish(stateMsg);
-            //         break;
-            //     } case startPlanning: {
-            //         std::cout << "startPlanning" << std::endl;
-            //         // startPlanMsg.data = true;
-            //         // startPlanPub.publish(startPlanMsg);
-            //         break;
-            //     }       
-            //     default:{
-            //         // std::cout << "Unrecognized command: " << cmd << std::endl;
-            //         break;
-            //     }
-            // }
+            size_t recvlen = (size_t)tcpReceiver.recvBuffer();
+            // If something was received add to circle buffer
+            if (recvlen > 0){
+                uint8_t* receivedBytes = tcpReceiver.GetReceived(recvlen);
+                circleBuffer.AddData(receivedBytes, recvlen);
+                delete[] receivedBytes;
+            }
         } else {
             tcpReceiver.Reconnect();
+        }
+
+        while(!circleBuffer.IsEmpty()){
+            int cmd = circleBuffer.GetCommand();
+            switch (cmd){
+                case (setStartPoint):{
+                    std::cout << "Set Start State" << std::endl;
+                    circleBuffer.GetVector3(stateMsg.translation);
+                    circleBuffer.GetQuaternion(stateMsg.rotation);
+                    startStatePub.publish(stateMsg);
+                    break;
+                }
+                case (setGoalPoint):{
+                    std::cout << "Set Goal State" << std::endl;
+                    circleBuffer.GetVector3(stateMsg.translation);
+                    circleBuffer.GetQuaternion(stateMsg.rotation);
+                    goalStatePub.publish(stateMsg);
+                    break;
+                }
+                case (startPlanning):{
+                    std::cout << "Start planning" << std::endl;
+                    startPlanMsg.data = true;
+                    startPlanPub.publish(startPlanMsg);
+                    break;
+                }
+                
+                default:{
+                    std::cout << "Unrecognized command: " << cmd << std::endl;
+                    break;
+                }
+            }
         }
         
 
