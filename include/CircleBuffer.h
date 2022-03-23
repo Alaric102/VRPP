@@ -106,9 +106,7 @@ uint8_t CircleBuffer::GetItem(){
 void CircleBuffer::GetData(uint8_t* pDst, unsigned long len){
     for (unsigned long i = 0; i < len; ++i){
         pDst[i] = GetItem();
-        std::cout << +pDst[i];
     }
-    std::cout << std::endl;
 }
 
 bool CircleBuffer::IsFull() const{

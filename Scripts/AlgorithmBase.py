@@ -11,13 +11,13 @@ class AlgorithmBase:
         assert self.__startState.shape == state.shape, \
             "setStartState(): " + str(self.__startState.shape) + " != " + str(state.shape)
         self.__startState = state
-        print("New start state: ", self.__startState)
+        # print("New start state: ", self.__startState)
         
     def SetGoalState(self, state :np.ndarray):
         assert self.__goalState.shape == state.shape, \
             "SetGoalState(): " + str(self.__goalState.shape) + " != " + str(state.shape)
         self.__goalState = state
-        print("New Goal state: ", self.__goalState)
+        # print("New Goal state: ", self.__goalState)
 
     def GetStartState(self) -> np.ndarray:
         return self.__startState

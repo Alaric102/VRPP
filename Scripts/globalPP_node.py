@@ -28,7 +28,7 @@ def goalState_cb(msg):
 def startPlan_cb(msg):
     if msg.data:
         rospy.loginfo(rospy.get_caller_id() + " : Start plan: " + str(msg.data) )
-        if globalPlanner.LoadVoxelMap(full_path = "D:/catkin_ws/src/VRPP_ROS/launch/map.txt"):
+        if globalPlanner.LoadVoxelMap(full_path = "D:/catkin_ws/src/VRPP_ROS/launch/mapObst.txt"):
             globalPlanner.isActive = True
 
 def main():
@@ -50,6 +50,7 @@ def main():
                 globalPathMsg.header.frame_id = "globalPath"
 
                 path = globalPlanner.GetPlan()
+                print(len(path))
                 for pose in path:
                     poseMsg = PoseStamped()
                     x, y, z = globalPlanner.GetContinuousState(pose)

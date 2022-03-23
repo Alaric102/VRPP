@@ -37,13 +37,14 @@ class VoxelMap:
 
             # Get voxelMap data
             line = f.readline()
-            self.__voxelMapData = np.zeros(self.__voxelMapSize, dtype=bool)
+            self.__voxelMapData = np.full(self.__voxelMapSize, False, dtype=bool)
             while line:
                 words = line.split(maxsplit=4)
                 if not(words[0].isdecimal() and words[1].isdecimal() and words[2].isdecimal()):
                     print("Invalid data in words: " + words)
                     return False
-                value = True if words[3] == "True" else "False"
+                value = False
+                if words[3] == "True": value = True
                 self.__voxelMapData[int(words[0]), int(words[1]), int(words[2])] = value
                 line = f.readline()
             f.close()
@@ -73,7 +74,9 @@ class VoxelMap:
 
     def IsObastacle(self, state: np.ndarray) -> bool:
         x, y, z = state
-        return not (self.__IsOnMap(state) and not self.__voxelMapData[x, y, z])
+        if not self.__IsOnMap(state):
+            return True
+        return self.__voxelMapData[x, y, z]
 
     def GetContinuousState(self, state: np.ndarray) -> np.ndarray:
         assert self.__voxelMapGridSize.shape == state.shape, "GetContinuousState(): Wrong shape!"

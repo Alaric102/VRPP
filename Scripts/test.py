@@ -6,14 +6,15 @@ import numpy as np
 import utils
 import matplotlib.pyplot as plt
 from PotentialField import PotentialMap
+import time as time
 
 globalPlanner = AStar()
 localPlanner = RRTBase()
 
-globalPlanner.LoadVoxelMap(full_path = "D:/catkin_ws/src/VRPP_ROS/launch/map.txt")
+globalPlanner.LoadVoxelMap(full_path = "D:/catkin_ws/src/VRPP_ROS/launch/mapObst.txt")
 
-startState = np.array([2.15109563e+00, -2.37947706e-19,  2.14324236e+00], dtype=float)
-goalState = np.array([-1.03313118e-01, -5.38950659e-20,  4.85443622e-01], dtype=float)
+startState = np.array([3.710000, 0.000000, 7.040000], dtype=float)
+goalState = np.array([-3.680000, 0.000000, -7.610000], dtype=float)
 
 globalPlanner.SetStartState(startState)
 globalPlanner.SetGoalState(goalState)
@@ -21,29 +22,32 @@ localPlanner.SetStartState(startState)
 localPlanner.SetGoalState(goalState)
 
 voxelMap = globalPlanner.GetVoxelMap()
-potentialMap = PotentialMap(voxelMap)
+# fig, axes = utils.PlotVoxelProjection(voxelMap)
 
 # localPlanner.SetVoxelMap(voxelMap)
 
-fig, axes = utils.PlotVoxelProjection(voxelMap)
+timerList = []
+for i in range(2):
+    startTime = time.time()
+    if globalPlanner.GetGlobalPlan():
+        timerList.append(time.time() - startTime)
+        descretePlan = globalPlanner.GetPlan()
+        print("path len: ", len(descretePlan))
 
-if globalPlanner.GetGlobalPlan():
-    descretePlan = globalPlanner.GetPlan()
-    continuousPlan = []
-
-    for descreteState in descretePlan:
-        utils.PlotVoxelStateProjection(axes, descreteState, "yellow")
-        continuousPlan.append(globalPlanner.GetContinuousState(descreteState))
-
-    localPlanner.SetGlobalPlan(continuousPlan)
-    if localPlanner.isActive:
-        sampledState = localPlanner.GetNextState()
-        print("sampledState", sampledState)
-    else:
-        localPlanner.isActive = True
-        sampledState = localPlanner.GetNextState()
-        print("sampledState", sampledState)
-    
-utils.PlotVoxelStateProjection(axes, globalPlanner.startStateDescrete, "blue")
-utils.PlotVoxelStateProjection(axes, globalPlanner.goalStateDescrete, "green")
-plt.show()
+        # continuousPlan = []
+        # for descreteState in descretePlan:
+        #     utils.PlotVoxelStateProjection(axes, descreteState, "yellow")
+        #     continuousPlan.append(globalPlanner.GetContinuousState(descreteState))
+        
+        # localPlanner.SetGlobalPlan(continuousPlan)
+        # currentState = localPlanner.GetCurrentState()
+        # nextState = localPlanner.GetNextState()
+        # figRRT, axesRRt = utils.PlotLocalMap(currentState, nextState)
+        # for i in range(200):
+        #     sampledState = localPlanner.GetSampleState()
+        #     utils.PlotLocalState(axesRRt, sampledState, color="grey")
+        
+# print(np.mean(np.array(timerList)))
+# utils.PlotVoxelStateProjection(axes, globalPlanner.startStateDescrete, "blue")
+# utils.PlotVoxelStateProjection(axes, globalPlanner.goalStateDescrete, "green")
+# plt.show()

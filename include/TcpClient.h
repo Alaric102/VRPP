@@ -14,11 +14,11 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
-
-// #include "CircleBuffer.h"
+#include <geometry_msgs/Transform.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <nav_msgs/Path.h>
 
 #pragma comment(lib, "Ws2_32.lib")
-
 
 class TcpClient {
 public:
@@ -48,8 +48,8 @@ public:
         memcpy(res, recvbuf, (size_t)size);
         return res;
     }
-
     struct addrinfo* getAddrInfo() const;
+    int SendBuffer(char *buff, int len);
 private:
     WSADATA wsaData;
     const PCSTR port_, address_;
@@ -68,7 +68,6 @@ private:
     void GetBytes(float v, uint8_t* dst, unsigned int offset = 0);
 
     
-    int SendBuffer(char *buff, int len);
     void PrintBuffer(char *buff, int len) const;
 };
 
@@ -146,48 +145,6 @@ struct addrinfo* TcpClient::getAddrInfo() const {
         return pAddrInfo;
 };
 
-// int TcpClient::sendPath(const std::vector<geometry_msgs::PoseStamped> &poses){
-//     unsigned int buffSize = 2 + 1 + poses.size()*3*4;   // BeginBytes + cmdByte + posesSize*corrdinatesNumber*floatSize
-//     uint8_t *buff = new uint8_t[buffSize];
-//     buff[0] = 0xFF;
-//     buff[1] = 0xFF;
-//     buff[2] = (uint8_t)globalPath;
-//     unsigned int offset = 3;
-
-//     for (int i = 0; i < poses.size(); ++i){
-//         float f = (float)poses[i].pose.position.x;
-//         uint8_t* bytes = reinterpret_cast<uint8_t*>(&f);
-//         std::memcpy(buff + offset, bytes, 4);
-//         offset += 4;
-
-//         f = (float)poses[i].pose.position.y;
-//         bytes = reinterpret_cast<uint8_t*>(&f);
-//         std::memcpy(buff + offset, bytes, 4);
-//         offset += 4;
-        
-//         f = (float)poses[i].pose.position.z;
-//         bytes = reinterpret_cast<uint8_t*>(&f);
-//         std::memcpy(buff + offset, bytes, 4);
-//         offset += 4;
-
-//         // std::cout << (float)poses[i].pose.position.x << ", " << 
-//         //     (float)poses[i].pose.position.y << ", " << 
-//         //     (float)poses[i].pose.position.z << std::endl;
-//         // std::cout << "f: " << f << ", bytes: ";
-//         // for (unsigned int j = 0; j < 4; ++j)
-//         //     std::cout << +bytes[j] << " ";
-//         // std::cout << std::endl;
-//     }
-
-//     // std::cout << offset << ", " << buffSize << std::endl;
-//     // std::cout << "Buffer: ";
-//     // for (unsigned int j = 0; j < buffSize; ++j)
-//     //     std::cout << +buff[j] << " ";
-//     // std::cout << std::endl;
-//     // return (int)sendBuffer((char*) buff, buffSize);
-//     return 0;
-// }
-
 // int TcpClient::requestPose(const geometry_msgs::Pose &pose){
 //     unsigned int buffSize = 2 + 1 + 3*4;   // BeginBytes + cmdByte + corrdinatesNumber*floatSize
 //     uint8_t *buff = new uint8_t[buffSize];
@@ -220,7 +177,15 @@ int TcpClient::SendBuffer(char *buff, int len){
         sendResult = WSAGetLastError();
         isConnected = false;
         std::cout << "sendBuffer error: " << sendResult << std::endl;
+        return -1;
     }
+    
+    std::cout << "Sended " << len << " bytes: ";
+    for (int i = 0; i < len; ++i){
+        std::cout << +(uint8_t)buff[i] << " ";
+    }
+    std::cout << std::endl;
+
     return sendResult;
 }
 

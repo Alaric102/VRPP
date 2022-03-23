@@ -26,8 +26,9 @@ class AStar(AlgorithmBase):
         
     def GetDescreteState(self, state: np.ndarray) -> np.ndarray:
         assert self.__voxelMap.GetGridSize().shape == state.shape, "GetDescreteState(): Wrong shape!"
-        state -= self.__voxelMap.GetMinCorner()
-        return np.array(state/self.__voxelMap.GetGridSize() , dtype=np.uint)
+        res = state - self.__voxelMap.GetMinCorner()
+        res = np.array(res/self.__voxelMap.GetGridSize() , dtype=np.uint)
+        return res
     
     def GetContinuousState(self, state: np.ndarray) -> np.ndarray:
         assert self.__voxelMap.GetGridSize().shape == state.shape, "GetDescreteState(): Wrong shape!"
@@ -72,12 +73,25 @@ class AStar(AlgorithmBase):
 
     def __GetActionCost(self, action: np.ndarray) -> int:
         x, y, z = action
-        return 1 
+        if (y != 0):
+            return 2
+        return 1
 
     def __GetHeuristic(self, state):
         delta = self.goalStateDescrete - state
-        delta[1] = 0
+        # Euclidean distance modified
+        # delta[1] = 0
+        # return np.linalg.norm(delta, ord=2)
+
+        # Manhattan distance modified
+        # delta[1] = 0
+        # return np.linalg.norm(delta, ord=1)
+
+        # Euclidean distance 
         return np.linalg.norm(delta, ord=2)
+        
+        # Manhattan distance 
+        # return np.linalg.norm(delta, ord=1)
 
     def __IsNearGoal(self, state) -> bool:
         return ((self.goalStateDescrete[0] == state[0]) and (self.goalStateDescrete[2] == state[2]))
@@ -86,23 +100,24 @@ class AStar(AlgorithmBase):
         # Descretize start/goal states
         self.startStateDescrete = self.GetDescreteState(self.GetStartState())
         self.goalStateDescrete = self.GetDescreteState(self.GetGoalState())
+        # Find nearest free state
         while (not self.__voxelMap.IsObastacle(self.startStateDescrete + np.array([0, -1, 0], dtype=np.uint))):
             self.startStateDescrete += np.array([0, -1, 0], dtype=np.uint)
         while (not self.__voxelMap.IsObastacle(self.goalStateDescrete + np.array([0, -1, 0], dtype=np.uint))):
             self.goalStateDescrete += np.array([0, -1, 0], dtype=np.uint)
-        print("startStateDescrete", self.startStateDescrete)
-        print("goalStateDescrete", self.goalStateDescrete)
-        if self.__voxelMap.IsObastacle(self.startStateDescrete):
-            print("Start state is obstacle or out of box")
-            return False
-        if self.__voxelMap.IsObastacle(self.goalStateDescrete):
-            print("Goal state is obstacle or out of box")
-            return False
+        while self.__voxelMap.IsObastacle(self.startStateDescrete):
+            self.startStateDescrete += np.array([0, 1, 0], dtype=np.uint)
+        while self.__voxelMap.IsObastacle(self.goalStateDescrete):
+            self.goalStateDescrete += np.array([0, 1, 0], dtype=np.uint)
+
+        print("startStateDescrete", self.startStateDescrete, self.__voxelMap.IsObastacle(self.startStateDescrete))
+        print("goalStateDescrete", self.goalStateDescrete, self.__voxelMap.IsObastacle(self.goalStateDescrete))
 
         # Init Map for visitted states and Graph
         self.__visitedMap = np.zeros_like(self.__voxelMap.GetMapData(), dtype=tuple)
         self.__visitedMap.fill((False,0))
         self.__graph = Graph(self.startStateDescrete)
+        self.__queue = deque()
 
         self.__Insert( 0, self.startStateDescrete )
         self.__SetVisited( 0, self.startStateDescrete )
@@ -172,7 +187,6 @@ class AStar(AlgorithmBase):
 
     def GetPlan(self):
         res = self.__graph.GetBranch(self.goalStateDescrete)
-        print("Path length: ", len(res))
         return res
 
 # ppAlg = Descrete()

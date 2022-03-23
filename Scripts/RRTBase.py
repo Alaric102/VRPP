@@ -12,18 +12,24 @@ class RRTBase(AlgorithmBase):
         self.isActive = False
 
     def SetGlobalPlan(self, plan):
+        print(plan)
         self.__globalPlan = plan
         # Take first current and goal states
         self.__currentState =self.__globalPlan.pop(0)
         self.__nextState = self.__globalPlan.pop(0)
-        
-    def GetNextState(self) -> np.array((3,), dtype=float):
-        print("self.__currentState", self.__currentState)
-        print("self.__nextState", self.__nextState)
+    
+    def GetNextState(self):
+        return self.__nextState
+
+    def GetCurrentState(self):
+        return self.__currentState
+
+    def GetSampleState(self) -> np.array((3,), dtype=float):
         meanState = (self.__currentState + self.__nextState)/2
-        sigma = (np.linalg.norm(self.__currentState + self.__nextState, ord=2) / 3) ** 2   # assumption that our covariance is 3*sigma
+        # assumption that our covariance is 3*sigma
+        sigma = (np.linalg.norm(self.__currentState - self.__nextState, ord=2) / 3) ** 2
         L = linalg.cholesky(np.eye(3, 3) * sigma, lower = True)
-        sample = np.expand_dims(np.random.randn(3), axis=1)
+        sample = np.random.randn(3)
         return np.matmul(L, sample) + meanState
 
     # def GetLocalPlan(self):

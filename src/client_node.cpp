@@ -21,7 +21,8 @@ CircleBuffer circleBuffer(512);
 enum UnityCommands {
     setStartPoint = 1,
     setGoalPoint,
-    startPlanning
+    startPlanning,
+    setRequestedState
 };
 
 enum ROSCommands {
@@ -29,20 +30,73 @@ enum ROSCommands {
     requestedPose
 };
 
-// Client
-// 1. Initialize Winsock.
-// 2. Create a socket.
-// 3. Connect to the server.
-// 4. Send and receive data.
-// 5. Disconnect.
-
 void requestedPose_cb(const geometry_msgs::Pose &msg){
-    // std::cout << tcpClient.requestPose(msg) << std::endl;
+    // BeginBytes + cmdByte + corrdinatesNumber*floatSize
+    unsigned int buffSize = 2 + 1 + 3*4;
+    uint8_t *buff = new uint8_t[buffSize];
+    buff[0] = 0xFF;
+    buff[1] = 0xFF;
+    buff[2] = (uint8_t)requestedPose;
+    unsigned int offset = 3;
+    
+    float f = (float)msg.position.x;
+    uint8_t* bytes = reinterpret_cast<uint8_t*>(&f);
+    std::memcpy(buff + offset, bytes, 4);
+    offset += 4;
+
+    f = (float)msg.position.y;
+    bytes = reinterpret_cast<uint8_t*>(&f);
+    std::memcpy(buff + offset, bytes, 4);
+    offset += 4;
+
+    f = (float)msg.position.z;
+    bytes = reinterpret_cast<uint8_t*>(&f);
+    std::memcpy(buff + offset, bytes, 4);
+    offset += 4;
+        
+    std::cout << "Request: "<< (float)msg.position.x << ", " << 
+        (float)msg.position.y << ", " << 
+        (float)msg.position.z << std::endl;
+
+    tcpSender.SendBuffer((char*) buff, buffSize);
 }
 
-
 void globalPath_cb(const nav_msgs::Path &msg){
-    // tcpClient.sendPath(msg.poses);
+    const std::vector<geometry_msgs::PoseStamped> poses = msg.poses;
+    // BeginBytes + cmdByte + pathLength + posesSize*corrdinatesNumber*floatSize
+    unsigned int buffSize = 2 + 1 + 1 + poses.size()*3*4;
+    uint8_t *buff = new uint8_t[buffSize];
+    buff[0] = 0xFF;
+    buff[1] = 0xFF;
+    buff[2] = (uint8_t)globalPath;
+    buff[3] = poses.size() & 0xFF;
+    unsigned int offset = 4;
+
+    for (int i = 0; i < poses.size(); ++i){
+        float f = (float)poses[i].pose.position.x;
+        uint8_t* bytes = reinterpret_cast<uint8_t*>(&f);
+        std::memcpy(buff + offset, bytes, 4);
+        offset += 4;
+
+        f = (float)poses[i].pose.position.y;
+        bytes = reinterpret_cast<uint8_t*>(&f);
+        std::memcpy(buff + offset, bytes, 4);
+        offset += 4;
+        
+        f = (float)poses[i].pose.position.z;
+        bytes = reinterpret_cast<uint8_t*>(&f);
+        std::memcpy(buff + offset, bytes, 4);
+        offset += 4;
+
+        // std::cout << (float)poses[i].pose.position.x << ", " << 
+        //     (float)poses[i].pose.position.y << ", " << 
+        //     (float)poses[i].pose.position.z << std::endl;
+        // std::cout << "f: " << f << ", bytes: ";
+        // for (unsigned int j = 0; j < 4; ++j)
+        //     std::cout << +bytes[j] << " ";
+        // std::cout << std::endl;
+    }
+    tcpSender.SendBuffer((char*) buff, buffSize);
 }
 
 
@@ -68,32 +122,24 @@ int main(int argc, char **argv){
 
     ros::Publisher startStatePub = nh.advertise<geometry_msgs::Transform>("startState", 1);
     ros::Publisher goalStatePub = nh.advertise<geometry_msgs::Transform>("goalState", 1);
+    ros::Publisher requestedPosePub = nh.advertise<geometry_msgs::Transform>("requestedPose", 1);
     static geometry_msgs::Transform stateMsg;
 
     ros::Publisher startPlanPub = nh.advertise<std_msgs::Bool>("startPlan", 1);
     static std_msgs::Bool startPlanMsg;
     startPlanMsg.data = false;
 
-    // ros::Subscriber globalPathSub = nh.subscribe("globalPath", 10, globalPath_cb);
-    // ros::Subscriber requestedPoseSub = nh.subscribe("requestedPose", 10, requestedPose_cb);
+    ros::Subscriber globalPathSub = nh.subscribe("globalPath", 10, globalPath_cb);
+    ros::Subscriber requestedPoseSub = nh.subscribe("requestPose", 10, requestedPose_cb);
 
 
-    int counter = 0;
     while(nh.ok()){
-        // if (tcpSender.IsConnected()){
-        //     // std::cout << "Sender is connected." << std::endl;
-        //     // counter = ++counter % 100;
-        //     // geometry_msgs::Pose msg;
-        //     // msg.position.x = 1.5 + counter;
-        //     // msg.position.y = -0.1 - counter;
-        //     // msg.position.z = 0.01 * counter;
-        //     // tcpSender.requestPose(msg);
-        // } else {
-        //     tcpSender.Reconnect();
-        // }
+        // Check Sender connection
+        if (!tcpSender.IsConnected()){
+            tcpSender.Reconnect();
+        }
 
-
-        // receive from Unity
+        // Receive from Unity
         if (tcpReceiver.IsConnected()){
             size_t recvlen = (size_t)tcpReceiver.recvBuffer();
             // If something was received add to circle buffer
@@ -106,27 +152,34 @@ int main(int argc, char **argv){
             tcpReceiver.Reconnect();
         }
 
+        // Proccess circle buffer while it is not empty
         while(!circleBuffer.IsEmpty()){
             int cmd = circleBuffer.GetCommand();
             switch (cmd){
                 case (setStartPoint):{
-                    std::cout << "Set Start State" << std::endl;
                     circleBuffer.GetVector3(stateMsg.translation);
                     circleBuffer.GetQuaternion(stateMsg.rotation);
                     startStatePub.publish(stateMsg);
                     break;
                 }
                 case (setGoalPoint):{
-                    std::cout << "Set Goal State" << std::endl;
                     circleBuffer.GetVector3(stateMsg.translation);
                     circleBuffer.GetQuaternion(stateMsg.rotation);
                     goalStatePub.publish(stateMsg);
                     break;
                 }
                 case (startPlanning):{
-                    std::cout << "Start planning" << std::endl;
                     startPlanMsg.data = true;
                     startPlanPub.publish(startPlanMsg);
+                    break;
+                } case (setRequestedState):{
+                    circleBuffer.GetVector3(stateMsg.translation);
+                    circleBuffer.GetQuaternion(stateMsg.rotation);
+                    uint16_t isFree;
+                    circleBuffer.GetData((uint8_t*)&isFree, 2);
+                    if (isFree > 0){
+                        requestedPosePub.publish(stateMsg);
+                    }
                     break;
                 }
                 
