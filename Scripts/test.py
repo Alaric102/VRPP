@@ -22,7 +22,7 @@ localPlanner.SetStartState(startState)
 localPlanner.SetGoalState(goalState)
 
 voxelMap = globalPlanner.GetVoxelMap()
-# fig, axes = utils.PlotVoxelProjection(voxelMap)
+fig, axes = utils.PlotVoxelProjection(voxelMap)
 
 # localPlanner.SetVoxelMap(voxelMap)
 
@@ -32,12 +32,26 @@ for i in range(2):
     if globalPlanner.GetGlobalPlan():
         timerList.append(time.time() - startTime)
         descretePlan = globalPlanner.GetPlan()
-        print("path len: ", len(descretePlan))
+        
+        optimizedPath = [descretePlan[0]]
+        prevDelta = descretePlan[1] - descretePlan[0]
+        for i in range(1, len(descretePlan) - 1):
+            delta = descretePlan[i + 1] - descretePlan[i]
+            if np.any(prevDelta != delta):
+                prevDelta = delta
+                optimizedPath.append(descretePlan[i])
+    
+        print("path len optimized: ", len(optimizedPath))
 
-        # continuousPlan = []
-        # for descreteState in descretePlan:
-        #     utils.PlotVoxelStateProjection(axes, descreteState, "yellow")
-        #     continuousPlan.append(globalPlanner.GetContinuousState(descreteState))
+        continuousPlan = []
+        for descreteState in descretePlan:
+            utils.PlotVoxelStateProjection(axes, descreteState, "yellow")
+            
+        continuousPlan = []
+        for descreteState in optimizedPath:
+            utils.PlotVoxelStateProjection(axes, descreteState, "red")
+            print(globalPlanner.GetContinuousState(descreteState))
+            continuousPlan.append(globalPlanner.GetContinuousState(descreteState))
         
         # localPlanner.SetGlobalPlan(continuousPlan)
         # currentState = localPlanner.GetCurrentState()
@@ -47,7 +61,7 @@ for i in range(2):
         #     sampledState = localPlanner.GetSampleState()
         #     utils.PlotLocalState(axesRRt, sampledState, color="grey")
         
-# print(np.mean(np.array(timerList)))
-# utils.PlotVoxelStateProjection(axes, globalPlanner.startStateDescrete, "blue")
-# utils.PlotVoxelStateProjection(axes, globalPlanner.goalStateDescrete, "green")
-# plt.show()
+print(np.mean(np.array(timerList)))
+utils.PlotVoxelStateProjection(axes, globalPlanner.startStateDescrete, "blue")
+utils.PlotVoxelStateProjection(axes, globalPlanner.goalStateDescrete, "green")
+plt.show()
