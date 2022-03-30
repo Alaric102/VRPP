@@ -26,6 +26,7 @@ fig, axes = utils.PlotVoxelProjection(voxelMap)
 
 # localPlanner.SetVoxelMap(voxelMap)
 
+
 timerList = []
 for i in range(2):
     startTime = time.time()
