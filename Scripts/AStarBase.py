@@ -65,7 +65,7 @@ class AStar(AlgorithmBase):
         for x in [1, 0, -1]:
             for y in [0]:
                 for z in [1, 0, -1]:
-                    if (x == 0) and (y == 0) and (z == 0):
+                    if ((x == 0) and (y == 0) and (z == 0)):
                         continue
                     action = np.array([x, y, z], dtype=int)
                     actionSpace.append(action)
@@ -145,10 +145,10 @@ class AStar(AlgorithmBase):
                     liftingLevel = 1
                     while self.__voxelMap.IsObastacle(nextState + lifting*liftingLevel):
                         liftingLevel += 1
-                        if liftingLevel > 8:
+                        if liftingLevel > 6:
                             break
 
-                    if liftingLevel > 8:
+                    if liftingLevel > 6:
                         continue
                     else:
                         action += lifting*liftingLevel
@@ -161,9 +161,13 @@ class AStar(AlgorithmBase):
                     descentLevel += 1
                 descentLevel -= 1
                 
-                if descentLevel < 8:
+                if descentLevel < 6:
                     action += descent * descentLevel
                     nextState += descent * descentLevel
+
+                # Don't climb in diagonal way
+                if abs(action[0]) and abs(action[2]) and abs(action[1]) or not self.__voxelMap.IsObastacle(nextState + descent):
+                    continue
 
                 x, y, z = nextState
                 isVisited, prevNextCost = self.__visitedMap[x, y, z]

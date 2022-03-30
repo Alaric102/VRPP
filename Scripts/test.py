@@ -37,7 +37,7 @@ for i in range(2):
         optimizedPath = [descretePlan[0]]
         prevDelta = descretePlan[1] - descretePlan[0]
         for i in range(1, len(descretePlan) - 1):
-            delta = descretePlan[i + 1] - descretePlan[i]
+            delta = descretePlan[i + 1].astype(int) - descretePlan[i].astype(int)
             if np.any(prevDelta != delta):
                 prevDelta = delta
                 optimizedPath.append(descretePlan[i])
